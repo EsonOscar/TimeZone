@@ -130,7 +130,9 @@ def admin():
     if current_user.is_authenticated and current_user.is_org_admin:
         return render_template('orgadmin_admin.html')
     elif current_user.is_authenticated and current_user.is_sysadmin:
-        return render_template('admin.html')
+        conn = db_connect()
+        users = conn.execute('SELECT * FROM users').fetchall()
+        return render_template('admin.html', users=users)
     else:
         return render_template('forbidden.html')
 
