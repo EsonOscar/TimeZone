@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, send_file
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
 from flask_cors import CORS
@@ -13,8 +12,6 @@ import sqlite3
 #Initialise the flask app, socketIO and CORS
 app = Flask(__name__)
 app.secret_key = "super_duper_secret_key"
-app.config["JWT_SECRET_KEY"] = "super_duper_secret_JWT_key"
-jwt = JWTManager(app)
 socketio = SocketIO(app)
 CORS(app)
 
@@ -24,7 +21,7 @@ login_manager.login_view = 'login'
 login_manager.init_app(app)
 
 #Database path
-database = "timelog.db"
+database = "TimeZone.db"
 
 #Create database connection
 def db_connect():
@@ -35,14 +32,16 @@ def db_connect():
 #User class for Flask-Login
 class User(UserMixin):
     def __init__(self, row):
-        self.id       = row['id']
-        self.name     = row['name']
-        self.lastname = row['lastname']
-        self.email    = row['email']
-        self.username = row['username']
-        self.password = row['password']
-        self.org_id   = row['org_id']
-        self.role     = row['role']
+        self.id             = row['id']
+        self.username       = row['username']
+        self.password       = row['password']
+        self.name           = row['name']
+        self.lastname       = row['lastname']
+        self.password       = row['password']
+        self.email          = row['email']
+        self.salary         = row['salary']
+        self.hourly_rate    = row['hourly_rate']
+        self.role           = row['role']
     
     #Check if user is sysadmin
     @property
@@ -177,57 +176,6 @@ def serve_manifest():
 @app.route('/sw.js')
 def serve_sw():
     return send_file('sw.js', mimetype='application/javascript')
-
-############################################### API ROUTES BELOW ###############################################
-
-#Placeholder dict for API GET request
-getlist = [{"GET": "Success",
-            "Extra": "This is a test"}]
-#Placeholder, get data from server
-@app.route('/api/get')
-@jwt_required()
-def get():
-    current_user = get_jwt_identity()
-    return jsonify(getlist), 200
-
-#Placeholder, post data to server
-@app.route('/api/post', methods=['POST'])
-@jwt_required()
-def post():
-    current_user = get_jwt_identity()
-
-    data = request.json
-    print(f"Received data: {data}")
-
-    return jsonify({"status": "success"}), 200
-
-#Login from app
-@app.route('/api/app_login', methods=['POST'])
-def app_login():
-    if request.method == "POST":
-        data = request.get_json(force=True)
-        username = data.get('username').strip()
-        password = data.get('password')
-        print(f"Username: {username}, Password: {password}")
-
-        if not username or not password:
-            return jsonify({"status": "error", "message": "Username and password are required"}), 400
-        
-        conn = db_connect()
-        row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        conn.close()
-
-        if row and check_password_hash(row['password'], password):
-            user = User(row)
-            access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(minutes=5))
-            print(f"User ID: {user.id}, has been logged in")
-            #print(f"Access token: {access_token}")
-            return jsonify(access_token=access_token), 200
-        else:
-            return jsonify({"status": "error", "message": "Invalid username or password"}), 401
-    else:
-        return jsonify({"status": "error", "message": "Invalid request method"}), 405
-
 
 #Config, app runs locally on port 5000. NGINX proxies outisde requests to this port.
 if __name__ == '__main__':
