@@ -10,7 +10,7 @@ from time import sleep
 import sqlite3
 
 #Initialise the flask app, socketIO and CORS
-app = Flask(__name__)
+app = Flask(__name__, static_folder="/home/eson/timezone_static", static_url_path="/static")
 app.secret_key = "super_duper_secret_key"
 socketio = SocketIO(app)
 CORS(app)

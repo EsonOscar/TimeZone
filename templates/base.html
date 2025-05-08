@@ -29,7 +29,7 @@
         <nav class="navbar navbar-light" style="background-color: #5499cb;">
             <div class="container-fluid">
                 <a class="navbar-brand" href="{{ url_for('index') }}">
-                    <img src="static/happy_logo.png" alt="" width="30 " height="30" class="d-inline-block align-text-top">
+                    <img src="{{ url_for('static', filename='happy_logo.png') }}" alt="" width="30 " height="30" class="d-inline-block align-text-top">
                     TimeZone
                 </a>
                 
