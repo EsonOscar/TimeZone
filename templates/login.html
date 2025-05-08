@@ -2,6 +2,7 @@
 
 {% block content %}
 <div class="container mt-5" style="max-width: 400px;">
+ 
 
   <h1>Login</h1>
   <p>Please enter your credentials to log in.</p>
@@ -39,6 +40,17 @@
     </div>
     <button type="submit" class="btn btn-primary">Submit</button>
   </form>
-
+  <div class="col d-flex align-items-center justify-content-center">
+    <div class="card mb-3 h-100" style="max-width: 540px; display: inline-block;">
+      <div class="row g-0 h-100">
+        
+        <div class="col-sm-3">
+          <img src="{{ url_for('static', filename='login.png') }}" class="img-fluid h-100 object-fit-cover" alt="...">
+        </div>
+  
+      </div>
+    </div>
+  </div>
+  
 </div>
 {% endblock %}
