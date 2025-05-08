@@ -97,6 +97,7 @@ def org_admin_required(f):
 #Index
 @app.route('/')
 @app.route('/index')
+@app.route('/home')
 def index():
     return render_template('index.html')
 
@@ -135,6 +136,41 @@ def admin():
         return render_template('admin.html', users=users)
     else:
         return render_template('forbidden.html')
+    
+#sysadmin create user
+@app.route("/sys/create_user", methods=["POST"])
+@login_required
+@sysadmin_required
+def sys_create_user():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        name = request.form.get("name", "").strip()
+        lastname = request.form.get("lastname", "").strip()
+        email = request.form.get("email", "").strip()
+        role = request.form.get("role")
+        paytype = request.form.get("pay_type")
+        pay = request.form.get("pay", "").strip()
+
+        if not username or not password or not name or not email or not role:
+            flash('All fields are required.', 'danger')
+            return redirect(url_for('admin'))
+        print(f"Creating user: {username}, {password}, {name}, {lastname}, {email}, {role}, {paytype}, {pay}")
+
+        """
+        conn = db_connect()
+        try:
+            
+            conn.execute('INSERT INTO users (username, password, name, lastname, email, role,) VALUES (?, ?, ?, ?, ?, ?)',
+                         (username, generate_password_hash(password), name, lastname, email, role))
+            conn.commit()
+            flash('User created successfully.', 'success')
+        except sqlite3.IntegrityError:
+            flash('Username or email already exists.', 'danger')
+        finally:
+            conn.close()
+        """
+    return redirect(url_for('admin'))
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
@@ -149,7 +185,6 @@ def login():
         if row and check_password_hash(row['password'], password):
             user = User(row)
             login_user(user)
-            flash('Logged in successfully.', 'success')
             next_page = request.args.get('next') or url_for('index')
             return redirect(next_page)
         else:
@@ -162,7 +197,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('You have been logged out.', 'info')
+    flash('sucker You have been logged out.', 'info')
     return redirect(url_for('login'))
 
 @app.route('/manifest.json')

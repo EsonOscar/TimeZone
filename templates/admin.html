@@ -49,7 +49,7 @@
       aria-labelledby="tab-create"
     >
       <div class="card shadow-sm p-4 mb-4">
-        <form method="POST" action="">
+        <form method="POST" action="{{ url_for('sys_create_user') }}">
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label">First Name</label>
@@ -61,7 +61,7 @@
               </div>
             <div class="col-md-4">
               <label class="form-label">Email</label>
-              <input name="email" type="email" class="form-control" placeholder="tabertobias@jegergrim.gylp" required>
+              <input name="email" type="email" class="form-control" placeholder="supertobias@megasexy.hunk" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Username</label>
@@ -82,8 +82,8 @@
             <div class="col-md-4">
                 <label class="form-label">Pay type</label>
                 <select name="pay_type" class="form-select">
-                  <option value="sysadmin">Salary</option>
-                  <option value="org_admin">Hourly rate</option>
+                  <option value="salary">Salary</option>
+                  <option value="hourly">Hourly rate</option>
                 </select>
               </div>
               <div class="col-md-4">
