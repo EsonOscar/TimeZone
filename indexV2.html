@@ -1,0 +1,84 @@
+{%extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="header" style="margin-top: 30px;">
+        <img src="static/tzlogo2.png" class="mx-auto d-block" style="max-width: 40%; " alt="...">
+        <h4 style="text-align: center; margin-top: 10px;">A user friendly time tracking system, keeping employee work times and equipment usage organised.</h4>
+    </div>
+</div>
+
+<div class="row justify-content-center gx-4 gy-4 mt-3" style="margin-top: 20px; margin-bottom: 20px;">
+    <div class="col-sm-4 col-md-3 col-lg-3">
+      <div class="card h-100 w-100">
+        <img src="static/forest_man.png" class="card-img-top img-fluid" alt="...">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">Android App</h5>
+          <p class="card-text">Employees log into the companion app, and go to work as normal.
+            The app tracks time worked automatically.
+          </p>
+          <a href="#Andriod App"><button>Read more</button>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-4 col-md-3 col-lg-3">
+        <div class="card h-100 w-100">
+          <img src="static/tractor.png" class="card-img-top img-fluid" alt="...">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Equipment Usage Statistics</h5>
+            <p class="card-text">When employees use equipment, the system registers how long it's used, and by whom.
+            </p>
+            <a href="#Equipment Usage Statistics"><button>Read more</button>
+          </div>
+        </div>
+    </div>
+      <div class="col-sm-4 col-md-3 col-lg-3">
+        <div class="card h-100 w-100">
+          <img src="static/iot_system.png" class="card-img-top img-fluid" alt="...">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Automated Workflow</h5>
+            <p class="card-text">The system does all of the heavy lifting for you, tracking, storing and sorting time worked and how, securely.
+            </p>
+            <a href="#Automated Workflow"><button>Read more</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-4 col-md-3 col-lg-3">
+        <div class="card h-100 w-100">
+          <img src="static/schedule_man.png" class="card-img-top img-fluid" alt="...">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">Administrator Dashboard</h5>
+            <p class="card-text">As an administrator, you have easy access to all of your employees work times and machine usage.
+            </p>
+            <a href="#Administrator Dashboard"><button>Read more</button>
+          </div>
+        </div>
+      </div>
+      <!-- Target section further down the page -->
+<div id="Andriod App">
+    <h2> How does it work our app?</h2>
+    <p>Well to put it blunt, it's to make the user able to keep track of time.
+        A better overview to see how much the individuel has worked as a form of a check in and check out system.
+        Furthermore making it easier for people who has a hard time of reading or writing to simply tap a button and the app does the work for them.
+    </p>
+<div id="Equipment Usage Statistics">
+    <h2> Equipment Usage Statistics what does it mean?</h2>
+    <p>With the help of our companion app, the system registers the users daily work hours.
+    It also registers how long certain machinery has been used with the help of our BLE beacons that connects to the phone and through that sends the data to the administrators dashboard.
+    </p>
+  </div>
+<div id="Automated Workflow">
+    <h2> What does Automated workflow mean?</h2>
+    <p>As mention before out system does the heavy lifting, which includes storing, sorting and tracking all the time that the employee and machinery has been spent.
+    Which afterwards is being kept safe and secure for only the administrator to see.
+    </p>
+  </div> 
+<div id="Administrator Dashboard">
+    <h2> The Administrators Dashboard</h2>
+    <p>As the high and mighty Administrator, you get your own Dashboard which includes an easy access to all of you're employees work hours and
+        machinery usages. You'll get to have a full overview of hours spent for everything and everyone.
+    </p>
+  </div> 
+</div>
+{% endblock %}
