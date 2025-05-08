@@ -109,13 +109,14 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Name</th><th>Email</th><th>Role</th><th>Actions</th>
+              <th>Name</th><th>Lastname</th><th>Email</th><th>Role</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for u in users %}
             <tr>
               <td>{{ u.name }}</td>
+              <td>{{ u.lastname }}</td>
               <td>{{ u.email }}</td>
               <td>{{ u.role.replace('_',' ') }}</td>
               <td>

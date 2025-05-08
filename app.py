@@ -137,7 +137,7 @@ def admin():
     else:
         return render_template('forbidden.html')
     
-#sysadmin create user
+#Route for a sysadmin to create a new user, accessed from the admin page
 @app.route("/sys/create_user", methods=["POST"])
 @login_required
 @sysadmin_required
@@ -155,21 +155,23 @@ def sys_create_user():
         if not username or not password or not name or not email or not role:
             flash('All fields are required.', 'danger')
             return redirect(url_for('admin'))
-        print(f"Creating user: {username}, {password}, {name}, {lastname}, {email}, {role}, {paytype}, {pay}")
+        #print(f"Creating user: {username}, {password}, {name}, {lastname}, {email}, {role}, {paytype}, {pay}")
 
-        """
         conn = db_connect()
         try:
-            
-            conn.execute('INSERT INTO users (username, password, name, lastname, email, role,) VALUES (?, ?, ?, ?, ?, ?)',
-                         (username, generate_password_hash(password), name, lastname, email, role))
-            conn.commit()
+            if paytype == "hourly":
+                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, hourly_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (username, generate_password_hash(password), name, lastname, email, role, pay))
+                conn.commit()
+            elif paytype == "salary":
+                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, salary) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (username, generate_password_hash(password), name, lastname, email, role, pay))
+                conn.commit()
             flash('User created successfully.', 'success')
         except sqlite3.IntegrityError:
             flash('Username or email already exists.', 'danger')
         finally:
             conn.close()
-        """
     return redirect(url_for('admin'))
 
 #Login
