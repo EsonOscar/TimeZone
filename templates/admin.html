@@ -14,19 +14,6 @@
     <li class="nav-item" role="presentation">
       <button
         class="nav-link active"
-        id="tab-create"
-        data-bs-toggle="pill"
-        data-bs-target="#pane-create"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-person-plus me-1"></i>
-        Create User
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
         id="tab-manage"
         data-bs-toggle="pill"
         data-bs-target="#pane-manage"
@@ -37,13 +24,64 @@
         Manage Users
       </button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="tab-create"
+        data-bs-toggle="pill"
+        data-bs-target="#pane-create"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-person-plus me-1"></i>
+        Create User
+      </button>
+    </li>
   </ul>
 
   <!-- Tab panes -->
   <div class="tab-content" id="adminTabsContent">
-    <!-- Create User Pane -->
+    <!-- Manage Users Pane -->
     <div
       class="tab-pane fade show active"
+      id="pane-manage"
+      role="tabpanel"
+      aria-labelledby="tab-manage"
+    >
+      <div class="card shadow-sm p-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Name</th><th>Lastname</th><th>Email</th><th>Role</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td>{{ u.name }}</td>
+              <td>{{ u.lastname }}</td>
+              <td>{{ u.email }}</td>
+              <td>{{ u.role.replace('_',' ') }}</td>
+              <td>
+                <a href=""
+                   class="btn btn-sm btn-outline-secondary">
+                   Edit
+                </a>
+                <a href=""
+                   class="btn btn-sm btn-outline-danger">
+                   Delete
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Create User Pane -->
+    <div
+      class="tab-pane fade"
       id="pane-create"
       role="tabpanel"
       aria-labelledby="tab-create"
@@ -57,7 +95,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">Last Name</label>
-                <input name="lastname" class="form-control" placeholder="Wagner" required>
+                <input name="lastname" class="form-control" placeholder="Wagner">
               </div>
             <div class="col-md-4">
               <label class="form-label">Email</label>
@@ -98,43 +136,7 @@
       </div>
     </div>
 
-    <!-- Manage Users Pane -->
-    <div
-      class="tab-pane fade"
-      id="pane-manage"
-      role="tabpanel"
-      aria-labelledby="tab-manage"
-    >
-      <div class="card shadow-sm p-4">
-        <table class="table table-striped mb-0">
-          <thead>
-            <tr>
-              <th>Name</th><th>Lastname</th><th>Email</th><th>Role</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for u in users %}
-            <tr>
-              <td>{{ u.name }}</td>
-              <td>{{ u.lastname }}</td>
-              <td>{{ u.email }}</td>
-              <td>{{ u.role.replace('_',' ') }}</td>
-              <td>
-                <a href=""
-                   class="btn btn-sm btn-outline-secondary">
-                   Edit
-                </a>
-                <a href=""
-                   class="btn btn-sm btn-outline-danger">
-                   Delete
-                </a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    
   </div>
 </div>
 {% endblock %}

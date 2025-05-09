@@ -133,6 +133,7 @@ def admin():
     elif current_user.is_authenticated and current_user.is_sysadmin:
         conn = db_connect()
         users = conn.execute('SELECT * FROM users').fetchall()
+        conn.close()
         return render_template('admin.html', users=users)
     else:
         return render_template('forbidden.html')
@@ -189,8 +190,8 @@ def login():
             login_user(user)
             next_page = request.args.get('next') or url_for('index')
             return redirect(next_page)
-        else:
-            flash('Invalid username or password.', 'danger')
+        #else:
+            #flash('Invalid username or password.', 'danger')
 
     return render_template('login.html')
 
