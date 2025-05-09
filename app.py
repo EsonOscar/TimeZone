@@ -99,7 +99,7 @@ def org_admin_required(f):
 @app.route('/index')
 @app.route('/home')
 def index():
-    return render_template('index.html')
+    return render_template('indexV3.html')
 
 #Meet the team
 @app.route('/team')
