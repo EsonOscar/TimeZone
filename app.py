@@ -129,7 +129,10 @@ def dashboard():
 @login_required
 def admin():
     if current_user.is_authenticated and current_user.is_org_admin:
-        return render_template('orgadmin_admin.html')
+        conn = db_connect()
+        users = conn.execute('SELECT * FROM users WHERE role IN ("org_admin", "employee")').fetchall()
+        conn.close()
+        return render_template('orgadmin_admin.html', users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         conn = db_connect()
         users = conn.execute('SELECT * FROM users').fetchall()
