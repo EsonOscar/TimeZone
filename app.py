@@ -67,6 +67,8 @@ def load_user(user_id):
     return User(row) if row else None
 
 #Send unauthorized response if user tries to connect to API endpoints, but is not logged in
+#Survivor from before Kotlin app was disregarded
+#Maybe useful in the future
 @login_manager.unauthorized_handler
 def unauthorized():
     if request.path.startswith('/api/'):
@@ -83,8 +85,8 @@ def sysadmin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-#Decorator, only allow org admin access
-def org_admin_required(f):
+#Decorator, only allow admin access, both org admin and sysadmin
+def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not (current_user.is_org_admin or current_user.is_sysadmin):
@@ -127,6 +129,7 @@ def dashboard():
 #Dashboard
 @app.route('/admin')
 @login_required
+@admin_required
 def admin():
     if current_user.is_authenticated and current_user.is_org_admin:
         conn = db_connect()
@@ -141,42 +144,7 @@ def admin():
     else:
         return render_template('forbidden.html')
     
-#Route for a sysadmin to create a new user, accessed from the admin page
-@app.route("/sys/create_user", methods=["POST"])
-@login_required
-@sysadmin_required
-def sys_create_user():
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        name = request.form.get("name", "").strip()
-        lastname = request.form.get("lastname", "").strip()
-        email = request.form.get("email", "").strip()
-        role = request.form.get("role")
-        paytype = request.form.get("pay_type")
-        pay = request.form.get("pay", "").strip()
 
-        if not username or not password or not name or not email or not role:
-            flash('All fields are required.', 'danger')
-            return redirect(url_for('admin'))
-        #print(f"Creating user: {username}, {password}, {name}, {lastname}, {email}, {role}, {paytype}, {pay}")
-
-        conn = db_connect()
-        try:
-            if paytype == "hourly":
-                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, hourly_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, pay))
-                conn.commit()
-            elif paytype == "salary":
-                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, salary) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, pay))
-                conn.commit()
-            flash('User created successfully.', 'success')
-        except sqlite3.IntegrityError:
-            flash('Username or email already exists.', 'danger')
-        finally:
-            conn.close()
-    return redirect(url_for('admin'))
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
@@ -213,6 +181,84 @@ def serve_manifest():
 @app.route('/sw.js')
 def serve_sw():
     return send_file('sw.js', mimetype='application/javascript')
+
+############################################# API ENDPOINTS BELOW ##############################################
+
+#Route for an admin to create a new user.
+#Data from the create user form, located in the admin.html template, is sent to this route.
+@app.route("/api/create_user", methods=["POST"])
+@login_required
+@admin_required
+def admin_create_user():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        name = request.form.get("name", "").strip()
+        lastname = request.form.get("lastname", "").strip()
+        email = request.form.get("email", "").strip()
+        role = request.form.get("role")
+        paytype = request.form.get("pay_type")
+        pay = request.form.get("pay", "").strip()
+
+        if not username or not password or not name or not email or not role:
+            #flash('All fields are required.', 'danger')
+            return redirect(url_for('admin'))
+        #print(f"Creating user: {username}, {password}, {name}, {lastname}, {email}, {role}, {paytype}, {pay}")
+
+        conn = db_connect()
+        try:
+            if paytype == "hourly":
+                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, hourly_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (username, generate_password_hash(password), name, lastname, email, role, pay))
+                conn.commit()
+            elif paytype == "salary":
+                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, salary) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (username, generate_password_hash(password), name, lastname, email, role, pay))
+                conn.commit()
+            print('User created successfully.', 'success')
+            #flash('User created successfully.', 'success')
+        except sqlite3.IntegrityError:
+            print('Username or email already exists.')
+            #flash('Username or email already exists.', 'danger')
+        finally:
+            conn.close()
+    return redirect(url_for('admin'))
+
+#API endpoint to get user data for one specific user
+#Only accessible by admins, both sysadmin and org admin
+@app.route("/api/user/<int:user_id>", methods=["GET"])
+@login_required
+@admin_required
+def get_user(user_id):
+    conn = db_connect()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    conn.close()
+    if user:
+        user = dict(user)
+        return jsonify(user)
+    else:
+        return jsonify({"Status": "Error 404", "Message": "User not found"}), 404
+
+#API endpoint to update a user
+#Only accessible by admins, both sysadmin and org admin
+@app.route("/api/update/<int:user_id>", methods=["POST"])
+@login_required
+@admin_required
+def update(user_id):
+    print(f"User update API endpoint hit, requested user ID to update: {user_id}")
+    
+    name        = request.form.get("inpName", "").strip()
+    lastname    = request.form.get("inpLast", "").strip()
+    email       = request.form.get("inpEmail", "").strip()
+    username    = request.form.get("inpUser", "").strip()
+    role        = request.form.get("inpRole", "")
+    
+    print(f"Updating user: {user_id}, {name}, {lastname}, {email}, {username}, {role}")
+    
+    return redirect(url_for('admin'))
+
+
+################################################### CONFIG #####################################################
 
 #Config, app runs locally on port 5000. NGINX proxies outisde requests to this port.
 if __name__ == '__main__':
