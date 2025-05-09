@@ -2,15 +2,28 @@
 
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
+  <div class="row">
+    <div class="col">
       <h1 class="h3 mb-1">SysAdmin Control Panel</h1>
       <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
   </div>
+  
+  
 
   <!-- Nav pills -->
-  <ul class="nav nav-pills mb-4" id="adminTabs" role="tablist">
+  <ul class="nav nav-pills mb-4 mt-1" id="adminTabs" role="tablist">
     <li class="nav-item" role="presentation">
       <button
         class="nav-link active"
@@ -65,7 +78,7 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Name</th><th>Lastname</th><th>Email</th><th>Role</th><th>Actions</th>
+              <th>Name</th><th>Lastname</th><th>Email</th><th>Username</th><th>Role</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -74,6 +87,7 @@
               <td>{{ u.name }}</td>
               <td>{{ u.lastname }}</td>
               <td>{{ u.email }}</td>
+              <td>{{ u.username }}</td>
               <td>{{ u.role.replace('_',' ') }}</td>
               <td>
                 <a href=""
@@ -132,7 +146,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">Pay type</label>
-                <select name="pay_type" class="form-select">
+                <select name="paytype" class="form-select">
                   <option value="salary">Salary</option>
                   <option value="hourly">Hourly rate</option>
                 </select>
@@ -162,7 +176,7 @@
           <div class="col-md-4">
             <label class="form-label">Select which user to Edit</label>
             <select id="userSelect" class="form-select">
-              <option value="">[ Select User ]</option>
+              <option value="">- Select User -</option>
               {% for u in users %}
                 <option value="{{ u.id }}">
                   {{ u.name }} {{ u.lastname }}
@@ -200,13 +214,17 @@
               <option value="employee">Employee</option>
             </select>
           </div>
+          <br>
           <div class="col-md-4">
-            <label class="form-label">Salary (DKK)</label>
-            <input id="inpSalary" name="salary"    class="form-control" disabled>
+            <label class="form-label">Pay Type</label>
+            <select id="inpPaytype"  name="paytype"      class="form-select" disabled>
+              <option value="salary">Salary</option>
+              <option value="hourly">Hourly</option>
+            </select>
           </div>
           <div class="col-md-4">
-            <label class="form-label">Hourly Rate (DKK)</label>
-            <input id="inpHourly" name="hourly_rate" class="form-control" disabled>
+            <label class="form-label">Pay (DKK)</label>
+            <input id="inpPay" name="pay"    class="form-control" disabled>
           </div>
 
           <div class="col-12">
@@ -248,8 +266,8 @@
       document.getElementById('inpEmail').value      = u.email;
       document.getElementById('inpUser').value       = u.username;
       document.getElementById('inpRole').value       = u.role;
-      document.getElementById('inpSalary').value     = u.salary    || '';
-      document.getElementById('inpHourly').value     = u.hourly_rate || '';
+      document.getElementById('inpPaytype').value    = u.paytype;
+      document.getElementById('inpPay').value        = u.pay;
   
       // Enable all fields when a user is chosen
       form.querySelectorAll('input, select, button').forEach(el => el.disabled = false);

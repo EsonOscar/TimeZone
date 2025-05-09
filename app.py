@@ -39,9 +39,9 @@ class User(UserMixin):
         self.lastname       = row['lastname']
         self.password       = row['password']
         self.email          = row['email']
-        self.salary         = row['salary']
-        self.hourly_rate    = row['hourly_rate']
         self.role           = row['role']
+        self.paytype        = row['paytype']
+        self.pay            = row['pay']
     
     #Check if user is sysadmin
     @property
@@ -138,7 +138,7 @@ def admin():
         return render_template('orgadmin_admin.html', users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         conn = db_connect()
-        users = conn.execute('SELECT * FROM users').fetchall()
+        users = conn.execute('SELECT * FROM users ORDER BY role DESC').fetchall()
         conn.close()
         return render_template('admin.html', users=users)
     else:
@@ -193,12 +193,12 @@ def admin_create_user():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        name = request.form.get("name", "").strip()
+        name     = request.form.get("name", "").strip()
         lastname = request.form.get("lastname", "").strip()
-        email = request.form.get("email", "").strip()
-        role = request.form.get("role")
-        paytype = request.form.get("pay_type")
-        pay = request.form.get("pay", "").strip()
+        email    = request.form.get("email", "").strip()
+        role     = request.form.get("role")
+        paytype  = request.form.get("paytype")
+        pay      = request.form.get("pay", "").strip()
 
         if not username or not password or not name or not email or not role:
             #flash('All fields are required.', 'danger')
@@ -207,14 +207,9 @@ def admin_create_user():
 
         conn = db_connect()
         try:
-            if paytype == "hourly":
-                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, hourly_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, pay))
-                conn.commit()
-            elif paytype == "salary":
-                conn.execute('INSERT INTO users (username, password, name, lastname, email, role, salary) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, pay))
-                conn.commit()
+            conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                            (username, generate_password_hash(password), name, lastname, email, role, paytype, pay))
+            conn.commit()
             print('User created successfully.', 'success')
             #flash('User created successfully.', 'success')
         except sqlite3.IntegrityError:
@@ -246,20 +241,61 @@ def get_user(user_id):
 @admin_required
 def update(user_id):
     print(f"User update API endpoint hit, requested user ID to update: {user_id}")
+
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
     
-    name        = request.form.get("inpName", "").strip()
-    lastname    = request.form.get("inpLast", "").strip()
-    email       = request.form.get("inpEmail", "").strip()
-    username    = request.form.get("inpUser", "").strip()
-    role        = request.form.get("inpRole", "")
-    
-    print(f"Updating user: {user_id}, {name}, {lastname}, {email}, {username}, {role}")
-    
+    name        = request.form.get("name", "").strip()
+    lastname    = request.form.get("lastname", "").strip()
+    email       = request.form.get("email", "").strip()
+    username    = request.form.get("username", "").strip()
+    role        = request.form.get("role", "")
+    paytype     = request.form.get("paytype", "")
+    pay         = request.form.get("pay", "").strip()
+
+    if not name or not email or not username or not role:
+        #flash('All fields are required.', 'danger')
+        return redirect(url_for('admin'))
+    elif user_id == current_user.id:
+        #flash('You cannot modify your own data.', 'danger')
+        return redirect(url_for('admin'))
+    elif user_id == 1 or user_id == 4 or user_id == 9:
+        #flash('You cannot modify the root sysadmin user.', 'danger')
+        print(f"\nWARNING ({utc_dt}):")
+        print(f"An attempt has been made to modify the root \"{username}\" user.")
+        print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname}).")
+        print(f"The incident has been logged.\n")
+        flash(f"Attempt to modify the root \"{username}\" user was made at {utc_dt}.", "danger")
+        flash(f"Attempt made by: [{current_user.username}] ({current_user.name} {current_user.lastname}). Attempt logged.", "danger")
+        return redirect(url_for('admin'))
+    elif user_id == 2:
+        print(f"\nWARNING ({utc_dt}):")
+        print(f"An attempt has been made to modify the user: \"{username}\"")
+        print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+        print(f"The incident has been logged.\n")
+        conn = db_connect()
+        conn.execute("""UPDATE users SET name = ?, lastname = ?, email = ? 
+                    WHERE id = ?""",("FJOLS", "FJOLS", "FJOLS@FJOLS.FJOLS",current_user.id))
+        conn.commit()
+        conn.close()
+        logout_user()
+        flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
+        return redirect(url_for('login'))
+    else:
+        try:
+            conn = db_connect()
+            conn.execute('UPDATE users SET name = ?, lastname = ?, email = ?, username = ?, role = ?, paytype = ?, pay = ? WHERE id = ?',
+                            (name, lastname, email, username, role, paytype, pay, user_id))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            print('Username or email already exists.')
+        finally:
+            conn.close()
+
     return redirect(url_for('admin'))
 
 
 ################################################### CONFIG #####################################################
 
-#Config, app runs locally on port 5000. NGINX proxies outisde requests to this port.
+# Config, app runs locally on port 5000. NGINX proxies outisde requests to this port, and sends the apps response back to the client.
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host="127.0.0.1")
