@@ -1,6 +1,6 @@
 {
-    "name": "My PWA",
-    "short_name": "PWA",
+    "name": "Hvalfangerne PWA",
+    "short_name": "HPWA",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
