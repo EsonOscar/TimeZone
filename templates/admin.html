@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+  /* non-active pills */
+  #adminTabs .nav-link { background: #ffffff; color: #495057; }
+  /* override each active pill */
+  #tab-manage.active  { background: #0d6efd; color: #fff; }
+  #tab-create.active  { background: #0d6efd; color: #fff; }
+  #tab-edit.active    { background: #0d6efd; color: #fff; }
+  #tab-delete.active  { background: #dc3545; color: #fff; }
+</style>
+
 <div class="container py-4">
   <div class="row">
     <div class="col">
@@ -34,7 +45,7 @@
         role="tab"
       >
         <i class="bi bi-people me-1"></i>
-        Manage Users
+        User List
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -63,6 +74,19 @@
         Edit User
       </button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="tab-delete"
+        data-bs-toggle="pill"
+        data-bs-target="#pane-delete"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-trash"></i>
+        Delete User
+      </button>
+    </li>
   </ul>
 
   <!-- Tab panes -->
@@ -78,7 +102,7 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Name</th><th>Lastname</th><th>Email</th><th>Username</th><th>Role</th><th>Actions</th>
+              <th>Name</th><th>Lastname</th><th>Email</th><th>Role</th><th>Registered</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -87,15 +111,15 @@
               <td>{{ u.name }}</td>
               <td>{{ u.lastname }}</td>
               <td>{{ u.email }}</td>
-              <td>{{ u.username }}</td>
               <td>{{ u.role.replace('_',' ') }}</td>
+              <td>{{ u.signup }}</td>
               <td>
                 <a href=""
-                   class="btn btn-sm btn-outline-secondary">
+                   class="btn btn-sm btn-outline-secondary disabled">
                    Edit
                 </a>
                 <a href=""
-                   class="btn btn-sm btn-outline-danger">
+                   class="btn btn-sm btn-outline-danger disabled">
                    Delete
                 </a>
               </td>
@@ -118,15 +142,15 @@
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label">First Name</label>
-              <input name="name" class="form-control" placeholder="Tobias" required>
+              <input name="name" class="form-control" required>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Last Name</label>
-                <input name="lastname" class="form-control" placeholder="Wagner">
+                <input name="lastname" class="form-control" required>
               </div>
             <div class="col-md-4">
               <label class="form-label">Email</label>
-              <input name="email" type="email" class="form-control" placeholder="supertobias@megasexy.hunk" required>
+              <input name="email" type="email" class="form-control"required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Username</label>
@@ -174,8 +198,8 @@
       <div class="card shadow-sm p-4 mb-4">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label">Select which user to Edit</label>
-            <select id="userSelect" class="form-select">
+            <label class="form-label">Select a user to edit:</label>
+            <select id="userSelectEdit" class="form-select">
               <option value="">- Select User -</option>
               {% for u in users %}
                 <option value="{{ u.id }}">
@@ -236,12 +260,39 @@
       </div>
     </div>
     
+    <!-- Delete User Pane -->
+    <div
+    class="tab-pane fade"
+    id="pane-delete"
+    role="tabpanel"
+    aria-labelledby="tab-delete"
+    >
+
+      <div class="card shadow-sm p-4 mb-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Select a user to delete:</label>
+            <select id="userSelectDelete" class="form-select">
+              <option value="">- Select User -</option>
+              {% for u in users %}
+                <option value="{{ u.id }}">
+                  {{ u.name }} {{ u.lastname }}
+                </option>
+              {% endfor %}
+            </select>
+            <button id="btnDelete" type="submit" class="btn btn-danger" disabled>
+              Delete User
+            </button>
+          </div>
+        </div>
+      </div>
 
   </div>
 </div>
 
+<!-- JS for filling out / sending the edit user form -->
 <script>
-  document.getElementById('userSelect').addEventListener('change', async function() {
+  document.getElementById('userSelectEdit').addEventListener('change', async function() {
     const userId = this.value;
     const form   = document.getElementById('editForm');
     const btn    = document.getElementById('btnSave');
@@ -279,5 +330,43 @@
       alert('Failed to load user data: ' + err);
     }
   });
-  </script>
+</script>
+
+<!-- JS for deleting a user -->
+<script>
+  document.getElementById('userSelectDelete').addEventListener('change', function() {
+    const userId = this.value;
+    const btn    = document.getElementById('btnDelete');
+  
+    if (!userId) {
+      // No user selected → disable button
+      btn.disabled = true;
+      return;
+    }
+  
+    // Enable the delete button
+    btn.disabled = false;
+  
+    // Set the delete button's action to the correct route
+    btn.onclick = function() {
+      window.location.href = `/api/delete/${userId}`;
+    };
+  });
+</script>
+
+<!-- JS for searchable dropdown menus -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Choices('#userSelectEdit', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+    new Choices('#userSelectDelete', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+  });
+</script>
 {% endblock %}

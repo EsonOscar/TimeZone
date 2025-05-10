@@ -100,19 +100,19 @@
       aria-labelledby="tab-create"
     >
       <div class="card shadow-sm p-4 mb-4">
-        <form method="POST" action="{{ url_for('sys_create_user') }}">
+        <form method="POST" action="">
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label">First Name</label>
-              <input name="name" class="form-control" placeholder="Tobias" required>
+              <input name="name" class="form-control" required>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Last Name</label>
-                <input name="lastname" class="form-control" placeholder="Wagner">
+                <input name="lastname" class="form-control" required>
               </div>
             <div class="col-md-4">
               <label class="form-label">Email</label>
-              <input name="email" type="email" class="form-control" placeholder="supertobias@megasexy.hunk" required>
+              <input name="email" type="email" class="form-control" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Username</label>
@@ -159,11 +159,14 @@
       <div class="card shadow-sm p-4 mb-4">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label">User</label>
+            <label class="form-label">Select which user to edit</label>
             <select name="user" class="form-select">
+              <option value="">- Select User -</option>
               {% for u in users %}
-                <option value="user">{{ u.name }}</option>
-              {% endfor %}   
+                <option value="{{ u.id }}">
+                  {{ u.name }} {{ u.lastname }}
+                </option>
+              {% endfor %}  
             </select>
           </div>
         </div>
@@ -173,15 +176,15 @@
           <div class="row g-3">         
             <div class="col-md-4">
               <label class="form-label">First Name</label>
-              <input name="name" class="form-control" placeholder="Tobias" required>
+              <input name="name" class="form-control" required>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Last Name</label>
-                <input name="lastname" class="form-control" placeholder="Wagner">
+                <input name="lastname" class="form-control" required>
               </div>
             <div class="col-md-4">
               <label class="form-label">Email</label>
-              <input name="email" type="email" class="form-control" placeholder="supertobias@megasexy.hunk" required>
+              <input name="email" type="email" class="form-control" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Username</label>

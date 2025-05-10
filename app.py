@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, send_file, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -126,19 +126,47 @@ def dashboard():
     else:
         return render_template('forbidden.html')
 
-#Dashboard
+#Administration panel
 @app.route('/admin')
 @login_required
 @admin_required
 def admin():
     if current_user.is_authenticated and current_user.is_org_admin:
         conn = db_connect()
-        users = conn.execute('SELECT * FROM users WHERE role IN ("org_admin", "employee")').fetchall()
+        users = conn.execute("""SELECT * FROM users 
+                             WHERE role = "employee" 
+                             AND lastname != "root"
+                             AND deleted_at IS NULL
+                             ORDER BY role DESC""").fetchall()
         conn.close()
         return render_template('orgadmin_admin.html', users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         conn = db_connect()
-        users = conn.execute('SELECT * FROM users ORDER BY role DESC').fetchall()
+        
+        users = conn.execute("""SELECT * FROM users 
+                             WHERE lastname != "root"
+                             AND deleted_at IS NULL 
+                             ORDER BY role DESC""").fetchall()
+        
+
+        if current_user.id == 1:
+            root_users = conn.execute("""SELECT * FROM users 
+                                      WHERE lastname = "root"
+                                      AND deleted_at IS NULL
+                                      ORDER BY role DESC""").fetchall()
+
+            count = 0
+            for account in root_users:
+                count += 1
+
+            count -= 1
+            for account in root_users:
+                users.insert(0, root_users[count])
+                count -= 1
+            
+            conn.close()
+            return render_template('admin.html', users=users)
+        
         conn.close()
         return render_template('admin.html', users=users)
     else:
@@ -152,17 +180,28 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        conn = db_connect()
-        row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        conn.close()
+        try:
+            conn = db_connect()
+            row = conn.execute("""SELECT * FROM users 
+                               WHERE username = ?
+                               """, (username,)).fetchone()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Invalid username or password.', 'danger')
+            return redirect(url_for('login'))
+        finally:
+            conn.close()
 
-        if row and check_password_hash(row['password'], password):
+        if row['deleted_at'] is not None:
+            flash('Your account has been deleted. Please contact support.', 'danger')
+            return redirect(url_for('login'))
+        elif row and check_password_hash(row['password'], password):
             user = User(row)
             login_user(user)
             next_page = request.args.get('next') or url_for('index')
             return redirect(next_page)
-        #else:
-            #flash('Invalid username or password.', 'danger')
+        else:
+            flash('Invalid username or password.', 'danger')
 
     return render_template('login.html')
 
@@ -171,13 +210,26 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('sucker You have been logged out.', 'info')
+    flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
+# Robots.txt - since we're publicly available, we need to limit what crawlers can do
+@app.route('/robots.txt')
+def robots():
+    return send_file('robots.txt', mimetype='plain/text')
+
+# Favicon
+@app.route('/favicon.ico')
+def favicon():
+    return send_file('favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+# Manifest
+# This is used for PWA support, and is required for the app to be installable on mobile devices
 @app.route('/manifest.json')
 def serve_manifest():
     return send_file('manifest.json', mimetype='application/manifest+json')
 
+# Service Worker
 @app.route('/sw.js')
 def serve_sw():
     return send_file('sw.js', mimetype='application/javascript')
@@ -190,6 +242,8 @@ def serve_sw():
 @login_required
 @admin_required
 def admin_create_user():
+    print(f"Create user API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -200,15 +254,20 @@ def admin_create_user():
         paytype  = request.form.get("paytype")
         pay      = request.form.get("pay", "").strip()
 
+        utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+
         if not username or not password or not name or not email or not role:
-            #flash('All fields are required.', 'danger')
+            flash('All fields are required.', 'danger')
             return redirect(url_for('admin'))
-        #print(f"Creating user: {username}, {password}, {name}, {lastname}, {email}, {role}, {paytype}, {pay}")
+        elif lastname == "root":
+            print(f"An attempt has been made to create a user with the root lastname.")
+            flash(f"You canot create a user with the lastname \"root\".", "danger")
+            return redirect(url_for('admin'))
 
         conn = db_connect()
         try:
-            conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, paytype, pay))
+            conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, signup) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                            (username, generate_password_hash(password), name, lastname, email, role, paytype, pay, utc_dt))
             conn.commit()
             print('User created successfully.', 'success')
             #flash('User created successfully.', 'success')
@@ -225,6 +284,9 @@ def admin_create_user():
 @login_required
 @admin_required
 def get_user(user_id):
+    print(f"User data API endpoint hit, requested user ID: {user_id}")
+    print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
     conn = db_connect()
     user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
@@ -234,13 +296,15 @@ def get_user(user_id):
     else:
         return jsonify({"Status": "Error 404", "Message": "User not found"}), 404
 
-#API endpoint to update a user
-#Only accessible by admins, both sysadmin and org admin
+# API endpoint to update a user
+# Only accessible by admins, both sysadmin and org admin
+# There's some logic to prevent certain users from being modified, needs updates
 @app.route("/api/update/<int:user_id>", methods=["POST"])
 @login_required
 @admin_required
 def update(user_id):
     print(f"User update API endpoint hit, requested user ID to update: {user_id}")
+    print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
 
     utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
     
@@ -252,34 +316,67 @@ def update(user_id):
     paytype     = request.form.get("paytype", "")
     pay         = request.form.get("pay", "").strip()
 
-    if not name or not email or not username or not role:
-        #flash('All fields are required.', 'danger')
+    try:
+        conn = db_connect()
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        user = dict(user)
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
         return redirect(url_for('admin'))
-    elif user_id == current_user.id:
-        #flash('You cannot modify your own data.', 'danger')
+    finally:
+        conn.close()
+    
+    # Check if all fields are filled
+    if not name or not lastname or not email or not username or not role:
+        flash('All fields are required.', 'danger')
         return redirect(url_for('admin'))
-    elif user_id == 1 or user_id == 4 or user_id == 9:
-        #flash('You cannot modify the root sysadmin user.', 'danger')
+    # Root users, don't allow modification
+    elif user['lastname'] == "root":
         print(f"\nWARNING ({utc_dt}):")
-        print(f"An attempt has been made to modify the root \"{username}\" user.")
+        print(f"Attempt has been made to modify the root \"{username}\" user.")
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname}).")
         print(f"The incident has been logged.\n")
         flash(f"Attempt to modify the root \"{username}\" user was made at {utc_dt}.", "danger")
-        flash(f"Attempt made by: [{current_user.username}] ({current_user.name} {current_user.lastname}). Attempt logged.", "danger")
+        flash(f"Attempt was made by: [{current_user.username}] ({current_user.name} {current_user.lastname}). Attempt has been logged.", "danger")
         return redirect(url_for('admin'))
-    elif user_id == 2:
+    # User 2, don't allow modification
+    elif user_id == 2 and current_user.id != 2:
         print(f"\nWARNING ({utc_dt}):")
-        print(f"An attempt has been made to modify the user: \"{username}\"")
+        print(f"Attempt has been made to modify the user: \"{username}\"")
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
         print(f"The incident has been logged.\n")
-        conn = db_connect()
-        conn.execute("""UPDATE users SET name = ?, lastname = ?, email = ? 
-                    WHERE id = ?""",("FJOLS", "FJOLS", "FJOLS@FJOLS.FJOLS",current_user.id))
-        conn.commit()
-        conn.close()
-        logout_user()
-        flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
+
+        # If the user is root, log them out
+        if current_user.lastname == "root":
+            logout_user()
+            flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
+            return redirect(url_for('login'))
+        
+        # If the user is not root, teach them a lesson
+        try:
+            conn = db_connect()
+            conn.execute("""UPDATE users SET name = ?, lastname = ? WHERE id = ?""", ("FJOLS", "FJOLS" ,current_user.id))
+            conn.commit()
+        except Exception as e:
+            print(f"Database error: {e}")
+            print("Stop making the databse sad!")
+        finally:
+            conn.close()
+            logout_user()
+            flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
         return redirect(url_for('login'))
+
+    # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
+    elif (user.role == "sysadmin" and current_user.id != 1) or (user.role == "sysadmin" and current_user.id != user_id):
+        print(f"\nWARNING ({utc_dt}):")
+        print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
+        print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+        print(f"The incident has been logged.\n")
+        flash(f"Attempt to modify the sysadmin \"{username}\" user was made at {utc_dt}.", "warning")
+        
+        return redirect(url_for('admin'))
+
     else:
         try:
             conn = db_connect()
@@ -288,11 +385,71 @@ def update(user_id):
             conn.commit()
         except sqlite3.IntegrityError:
             print('Username or email already exists.')
+            flash('Username or email already exists.', 'danger')
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error', 'danger')
         finally:
             conn.close()
 
     return redirect(url_for('admin'))
 
+# API endpoint to delete a user (soft delete)
+# Only accessible by admins, both sysadmin and org admin
+# Be careful with this one pls pls
+@app.route("/api/delete/<int:user_id>")
+@login_required
+@admin_required
+def delete(user_id):
+    print(f"User delete API endpoint hit, requested user ID to delete: {user_id}")
+    print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+
+    try:
+        conn = db_connect()
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        user = dict(user)
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('admin'))
+    finally:
+        conn.close()
+
+    # Do not allow deletion of root users
+    if user["lastname"] == "root":
+        flash(f"Attempt to delete the root \"{user["username"]}\" user was made at {utc_dt}.", "danger")
+        flash(f"Attempt was made by: [{current_user.username}] ({current_user.name} {current_user.lastname}). Attempt has been logged.", "danger")
+        return redirect(url_for('admin'))
+    # Do not allow deletion of the user making the request
+    elif user_id == current_user.id:
+        flash(f"Don't delete yourself, you have so much to live for!", "danger")
+        return redirect(url_for('admin'))
+    # Do not allow deletion of sysadmin users
+    elif user["role"] == "sysadmin":
+        flash(f"SysAdmin users can't be deleted.", "danger")
+        return redirect(url_for('admin'))
+    
+    else:
+        try:
+            conn = db_connect()
+            conn.execute('UPDATE users SET deleted_at = ? WHERE id = ?', (utc_dt, user_id))
+            conn.commit()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error', 'danger')
+        finally:
+            conn.close()
+        flash(f"User \"{user["username"]}\" deleted successfully.", "success")
+        return redirect(url_for('admin'))
+
+    
+
+    
+
+
+ 
 
 ################################################### CONFIG #####################################################
 
