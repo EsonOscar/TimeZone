@@ -1,4 +1,3 @@
-#Tiny little school project site, please don't flood us with traffic
 User-agent: *
 Allow: /$
 Allow: /index

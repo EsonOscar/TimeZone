@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -216,23 +216,27 @@ def logout():
 # Robots.txt - since we're publicly available, we need to limit what crawlers can do
 @app.route('/robots.txt')
 def robots():
-    return send_file('robots.txt', mimetype='plain/text')
+    resp = make_response(
+        send_from_directory(app.root_path, 'robots.txt', mimetype='text/plain')
+    )
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 # Favicon
 @app.route('/favicon.ico')
 def favicon():
-    return send_file('favicon.ico', mimetype='image/vnd.microsoft.icon')
+    return send_from_directory(app.static_url_path,'happy_logo.png', mimetype='image/vnd.microsoft.icon')
 
 # Manifest
 # This is used for PWA support, and is required for the app to be installable on mobile devices
 @app.route('/manifest.json')
 def serve_manifest():
-    return send_file('manifest.json', mimetype='application/manifest+json')
+    return send_from_directory(app.root_path, 'manifest.json', mimetype='application/manifest+json')
 
 # Service Worker
 @app.route('/sw.js')
 def serve_sw():
-    return send_file('sw.js', mimetype='application/javascript')
+    return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 ############################################# API ENDPOINTS BELOW ##############################################
 
