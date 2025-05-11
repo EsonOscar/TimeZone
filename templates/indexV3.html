@@ -1,4 +1,4 @@
-{%extends "base.html" %}
+{% extends "base.html" %}
 
 {% block content %}
   <!-- Header -->
@@ -19,7 +19,8 @@
           <img src="static/forest_man.png" class="card-img-top" alt="Mobile App">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Mobile App</h5>
-            <p class="card-text">Employees log into the companion app and track how their time is spent.</p>
+            <p class="card-text">Employees log into the companion app, and go to work as normal.
+            The app helps the user track how their time is spent.</p>
             <a href="#mobile-app" class="btn btn-primary mt-auto">Read more</a>
           </div>
         </div>
@@ -29,7 +30,7 @@
           <img src="static/tractor.png" class="card-img-top" alt="Equipment Usage">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Equipment Usage Statistics</h5>
-            <p class="card-text">The system tracks machine usage time automatically.</p>
+            <p class="card-text">When employees use equipment, the system registers how long it's used, and by whom.</p>
             <a href="#equipment-usage" class="btn btn-primary mt-auto">Read more</a>
           </div>
         </div>
@@ -39,7 +40,7 @@
           <img src="static/iot_system.png" class="card-img-top" alt="Automated Workflow">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Automated Workflow</h5>
-            <p class="card-text">Our system tracks and organizes time and data automatically.</p>
+            <p class="card-text">The system does all of the heavy lifting for you, tracking, storing and sorting time worked and how, securely.</p>
             <a href="#automated-workflow" class="btn btn-primary mt-auto">Read more</a>
           </div>
         </div>
@@ -49,7 +50,7 @@
           <img src="static/schedule_man.png" class="card-img-top" alt="Administrator Dashboard">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Administrator Dashboard</h5>
-            <p class="card-text">Admins have full visibility of employee and equipment data.</p>
+            <p class="card-text">As an administrator, you have easy access to all of your employees work times and machine usage.</p>
             <a href="#admin-dashboard" class="btn btn-primary mt-auto">Read more</a>
           </div>
         </div>
@@ -59,7 +60,7 @@
 
   <!-- Detailed Sections -->
   <div class="container my-5">
-    <div class="card mb-4" id="mobile-app" data-aos="fade-right">
+    <div class="card mb-4" id="mobile-app" data-aos="fade-right" data-aos-offset="700">
       <div class="card-body">
         <h5 class="card-title">How does the App work?</h5>
         <p class="card-text">
@@ -84,7 +85,7 @@
       </div>
     </div>
 
-    <div class="card mb-4" id="equipment-usage" data-aos="fade-left">
+    <div class="card mb-4" id="equipment-usage" data-aos="fade-left" data-aos-offset="700">
       <div class="card-body">
         <h5 class="card-title">Equipment Usage Statistics – what does it mean?</h5>
         <p class="card-text">
@@ -96,7 +97,7 @@
       </div>
     </div>
 
-    <div class="card mb-4" id="automated-workflow" data-aos="fade-right">
+    <div class="card mb-4" id="automated-workflow" data-aos="fade-right" data-aos-offset="700">
       <div class="card-body">
         <h5 class="card-title">What does Automated Workflow mean?</h5>
         <p class="card-text">
@@ -107,7 +108,7 @@
       </div>
     </div>
 
-    <div class="card mb-4" id="admin-dashboard" data-aos="fade-left">
+    <div class="card mb-4" id="admin-dashboard" data-aos="fade-left" data-aos-offset="700">
       <div class="card-body">
         <h5 class="card-title">The Administrators Dashboard</h5>
         <p class="card-text">
@@ -119,18 +120,15 @@
     </div>
   </div>
 
-  <!-- Bootstrap + AOS JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-  <script>
-    AOS.init({
-      duration: 800,
-      once: true
-    });
-  </script>
-
-</body>
-</html>
-
-  
+<!-- Include AOS once, _after_ your content -->
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  AOS.init({
+    duration: 800,
+    once: true,
+    offset: 400
+  });
+});
+</script>
 {% endblock %}

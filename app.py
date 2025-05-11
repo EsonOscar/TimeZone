@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.serving import WSGIRequestHandler
 from cryptography.fernet import Fernet
 from flask_cors import CORS
 from functools import wraps
@@ -9,10 +11,24 @@ from datetime import datetime, timezone, timedelta
 from time import sleep
 import sqlite3
 
+# Tell Flask to show the actual request IP in the log, instead of 127.0.0.1
+# The request handler is used in the app.run() method
+class ProxiedRequestHandler(WSGIRequestHandler):
+    def address_string(self):
+        # trust the first entry in X-Forwarded-For
+        forwarded = self.headers.get('X-Forwarded-For', '')
+        if forwarded:
+            return forwarded.split(',')[0].strip()
+        return super().address_string()
+
 #Initialise the flask app, socketIO and CORS
 app = Flask(__name__, static_folder="/home/eson/timezone_static", static_url_path="/static")
 app.secret_key = "super_duper_secret_key"
-socketio = SocketIO(app)
+
+# Tell flask to trust the third entry in X-Forwarded-For
+# The app is behind cloudflare, and a reverse proxy, so the third entry is the real client IP
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
+#socketio = SocketIO(app)
 CORS(app)
 
 #Inistialize the login manager
@@ -29,7 +45,7 @@ def db_connect():
     conn.row_factory = sqlite3.Row
     return conn
 
-#User class for Flask-Login
+# User class for Flask-Login
 class User(UserMixin):
     def __init__(self, row):
         self.id             = row['id']
@@ -172,7 +188,16 @@ def admin():
     else:
         return render_template('forbidden.html')
     
-
+@app.route("/user")
+@login_required
+def user():
+    if current_user.is_authenticated:
+        conn = db_connect()
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone()
+        conn.close()
+        return render_template('user.html', user=user)
+    else:
+        return render_template('forbidden.html')
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
@@ -213,7 +238,10 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-# Robots.txt - since we're publicly available, we need to limit what crawlers can do
+# Robots.txt
+# Doesn't work for some reason, but it's here for future reference
+# Working on it
+"""
 @app.route('/robots.txt')
 def robots():
     resp = make_response(
@@ -221,8 +249,9 @@ def robots():
     )
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return resp
-
+"""
 # Favicon
+# For the app
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.static_url_path,'happy_logo.png', mimetype='image/vnd.microsoft.icon')
@@ -267,17 +296,21 @@ def admin_create_user():
             print(f"An attempt has been made to create a user with the root lastname.")
             flash(f"You canot create a user with the lastname \"root\".", "danger")
             return redirect(url_for('admin'))
+        elif current_user.role == "org_admin" and (role == "sysadmin" or role == "org_admin"):
+            print(f"An attempt has been made to create a user with the role \"{role}\" by an org admin.")
+            flash(f"You cannot create a user with the role \"{role}\".", "danger")
+            return redirect(url_for('admin'))
 
         conn = db_connect()
         try:
-            conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, signup) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                             (username, generate_password_hash(password), name, lastname, email, role, paytype, pay, utc_dt))
             conn.commit()
             print('User created successfully.', 'success')
-            #flash('User created successfully.', 'success')
+            flash(f'User {username} created successfully.', 'success')
         except sqlite3.IntegrityError:
             print('Username or email already exists.')
-            #flash('Username or email already exists.', 'danger')
+            flash('Username or email already exists.', 'danger')
         finally:
             conn.close()
     return redirect(url_for('admin'))
@@ -324,6 +357,7 @@ def update(user_id):
         conn = db_connect()
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         user = dict(user)
+        print(f"User data: {user}")
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
@@ -372,13 +406,13 @@ def update(user_id):
         return redirect(url_for('login'))
 
     # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
-    elif (user.role == "sysadmin" and current_user.id != 1) or (user.role == "sysadmin" and current_user.id != user_id):
+    elif (user["role"] == "sysadmin" and current_user.id != 1) or (user["role"] == "sysadmin" and current_user.id != user_id):
         print(f"\nWARNING ({utc_dt}):")
         print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
         print(f"The incident has been logged.\n")
-        flash(f"Attempt to modify the sysadmin \"{username}\" user was made at {utc_dt}.", "warning")
-        
+        flash(f"SysAdmins users can only be modified by root, or by themselves.", "warning")
+
         return redirect(url_for('admin'))
 
     else:
@@ -399,7 +433,7 @@ def update(user_id):
     return redirect(url_for('admin'))
 
 # API endpoint to delete a user (soft delete)
-# Only accessible by admins, both sysadmin and org admin
+# Only accessible by admins, both sysadmin and org admin (org admin can only delete employees)
 # Be careful with this one pls pls
 @app.route("/api/delete/<int:user_id>")
 @login_required
@@ -448,15 +482,8 @@ def delete(user_id):
         flash(f"User \"{user["username"]}\" deleted successfully.", "success")
         return redirect(url_for('admin'))
 
-    
-
-    
-
-
- 
-
 ################################################### CONFIG #####################################################
 
 # Config, app runs locally on port 5000. NGINX proxies outisde requests to this port, and sends the apps response back to the client.
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, host="127.0.0.1")
+    app.run(debug=True, port=5000, host="127.0.0.1", request_handler=ProxiedRequestHandler)

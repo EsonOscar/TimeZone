@@ -2,10 +2,21 @@
 
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1 class="h3 mb-1">SysAdmin Control Panel</h1>
+  <div class="row">
+    <div class="col">
+      <h1 class="h3 mb-1">Organisation Administrator Control Panel</h1>
       <p class="text-muted">Welcome, {{ current_user.name }}!</p>
+    </div>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
     </div>
   </div>
 
@@ -21,7 +32,7 @@
         role="tab"
       >
         <i class="bi bi-people me-1"></i>
-        Manage Users
+        Employee List
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -34,7 +45,7 @@
         role="tab"
       >
         <i class="bi bi-person-plus me-1"></i>
-        Create User
+        Create Employee Account
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -47,7 +58,7 @@
         role="tab"
       >
         <i class="bi bi-pencil-square"></i>
-        Edit User
+        Edit Employee
       </button>
     </li>
   </ul>
@@ -65,7 +76,7 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Name</th><th>Lastname</th><th>Email</th><th>Role</th><th>Actions</th>
+              <th>Name</th><th>Lastname</th><th>Email</th><th>Registered</th><th>Actions (Soon™)</th>
             </tr>
           </thead>
           <tbody>
@@ -74,14 +85,14 @@
               <td>{{ u.name }}</td>
               <td>{{ u.lastname }}</td>
               <td>{{ u.email }}</td>
-              <td>{{ u.role.replace('_',' ') }}</td>
+              <td>{{ u.created_at }}</td>
               <td>
                 <a href=""
-                   class="btn btn-sm btn-outline-secondary">
+                   class="btn btn-sm btn-outline-secondary disabled">
                    Edit
                 </a>
                 <a href=""
-                   class="btn btn-sm btn-outline-danger">
+                   class="btn btn-sm btn-outline-danger disabled">
                    Delete
                 </a>
               </td>
@@ -100,7 +111,7 @@
       aria-labelledby="tab-create"
     >
       <div class="card shadow-sm p-4 mb-4">
-        <form method="POST" action="">
+        <form id="createForm" method="POST" action="{{ url_for('admin_create_user') }}">
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label">First Name</label>
@@ -125,14 +136,12 @@
             <div class="col-md-4">
               <label class="form-label">Role</label>
               <select name="role" class="form-select">
-                <option value="sysadmin">SysAdmin</option>
-                <option value="org_admin">Organisation Admin</option>
                 <option value="employee">Employee</option>
               </select>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Pay type</label>
-                <select name="pay_type" class="form-select">
+                <select name="paytype" class="form-select">
                   <option value="salary">Salary</option>
                   <option value="hourly">Hourly rate</option>
                 </select>
@@ -197,8 +206,6 @@
             <div class="col-md-4">
               <label class="form-label">Role</label>
               <select name="role" class="form-select">
-                <option value="sysadmin">SysAdmin</option>
-                <option value="org_admin">Organisation Admin</option>
                 <option value="employee">Employee</option>
               </select>
             </div>
