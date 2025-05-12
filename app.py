@@ -428,6 +428,7 @@ def update(user_id):
             print(f"Database error: {e}")
             flash('Database error', 'danger')
         finally:
+            flash(f"User \"{username}\" updated successfully.", "success")
             conn.close()
 
     return redirect(url_for('admin'))
