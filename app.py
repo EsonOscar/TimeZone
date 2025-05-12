@@ -127,7 +127,7 @@ def team():
 #Contact
 @app.route('/contact')
 def contact():
-    return render_template('contact.html')
+    return render_template('contactV2.html')
 
 #Dashboard
 @app.route('/dashboard')
@@ -411,7 +411,7 @@ def update(user_id):
         print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
         print(f"The incident has been logged.\n")
-        flash(f"SysAdmins users can only be modified by root, or by themselves.", "warning")
+        flash(f"SysAdmins users can only be modified by root, or by the account owner.", "warning")
 
         return redirect(url_for('admin'))
 
