@@ -210,7 +210,6 @@
           </div>
         </div>
       </div>
-
       
       <div class="card shadow-sm p-4 mb-4">
         <form id="editForm" method="POST" action="" class="row g-3">
@@ -339,7 +338,7 @@
     const btn    = document.getElementById('btnDelete');
   
     if (!userId) {
-      // No user selected → disable button
+      // No user selected, disable button
       btn.disabled = true;
       return;
     }
@@ -357,7 +356,6 @@
 </script>
 
 <!-- Confirmation for creating SysAdmins -->
-
 <script>
   document.getElementById("createForm").addEventListener("submit", function(e) {
     const role = this.querySelector("select[name='role']").value;
@@ -369,7 +367,7 @@
   });
 </script>
 
-<!-- JS for searchable dropdown menus -->
+<!-- JS for searchable dropdown menus, very cool -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     new Choices('#userSelectEdit', {

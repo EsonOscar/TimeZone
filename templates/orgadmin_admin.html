@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  /* non-active pills */
+  #adminTabs .nav-link { background: #ffffff; color: #495057; }
+  /* override each active pill */
+  #tab-manage.active  { background: #0d6efd; color: #fff; }
+  #tab-create.active  { background: #0d6efd; color: #fff; }
+  #tab-edit.active    { background: #0d6efd; color: #fff; }
+  #tab-delete.active  { background: #dc3545; color: #fff; }
+</style>
+
 <div class="container py-4">
   <div class="row">
     <div class="col">
@@ -160,74 +170,132 @@
 
     <!-- Edit User Pane -->
     <div
-      class="tab-pane fade"
-      id="pane-edit"
-      role="tabpanel"
-      aria-labelledby="tab-edit"
+    class="tab-pane fade"
+    id="pane-edit"
+    role="tabpanel"
+    aria-labelledby="tab-edit"
     >
+
       <div class="card shadow-sm p-4 mb-4">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label">Select which user to edit</label>
-            <select name="user" class="form-select">
+            <label class="form-label">Select a user to edit:</label>
+            <select id="userSelectEdit" class="form-select">
               <option value="">- Select User -</option>
               {% for u in users %}
                 <option value="{{ u.id }}">
                   {{ u.name }} {{ u.lastname }}
                 </option>
-              {% endfor %}  
+              {% endfor %}
             </select>
           </div>
         </div>
       </div>
+      
       <div class="card shadow-sm p-4 mb-4">
-        <form method="POST" action="">
-          <div class="row g-3">         
-            <div class="col-md-4">
-              <label class="form-label">First Name</label>
-              <input name="name" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Last Name</label>
-                <input name="lastname" class="form-control" required>
-              </div>
-            <div class="col-md-4">
-              <label class="form-label">Email</label>
-              <input name="email" type="email" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Username</label>
-              <input name="username" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Initial Password</label>
-                <input name="password" type="password" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Role</label>
-              <select name="role" class="form-select">
-                <option value="employee">Employee</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Pay type</label>
-                <select name="pay_type" class="form-select">
-                  <option value="salary">Salary</option>
-                  <option value="hourly">Hourly rate</option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Ammount in DKK</label>
-                <input name="pay" class="form-control" required>
-            </div>
+        <form id="editForm" method="POST" action="" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">First Name</label>
+            <input id="inpName"   name="name"      class="form-control" disabled>
           </div>
-          <button type="submit" class="btn btn-primary mt-4">
-            Submit Changes
-          </button>
+          <div class="col-md-4">
+            <label class="form-label">Last Name</label>
+            <input id="inpLast"   name="lastname"  class="form-control" disabled>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Email</label>
+            <input id="inpEmail"  name="email"     type="email" class="form-control" disabled>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Username</label>
+            <input id="inpUser"   name="username"  class="form-control" disabled>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Role</label>
+            <select id="inpRole"  name="role"      class="form-select" disabled>
+              <option value="employee">Employee</option>
+            </select>
+          </div>
+          <br>
+          <div class="col-md-4">
+            <label class="form-label">Pay Type</label>
+            <select id="inpPaytype"  name="paytype"      class="form-select" disabled>
+              <option value="salary">Salary</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Pay (DKK)</label>
+            <input id="inpPay" name="pay"    class="form-control" disabled>
+          </div>
+
+          <div class="col-12">
+            <button id="btnSave" type="submit" class="btn btn-primary" disabled>
+              Save Changes
+            </button>
+          </div>
         </form>
       </div>
     </div>
     
   </div>
 </div>
+
+<!-- JS for filling out / sending the edit user form -->
+<script>
+  document.getElementById('userSelectEdit').addEventListener('change', async function() {
+    const userId = this.value;
+    const form   = document.getElementById('editForm');
+    const btn    = document.getElementById('btnSave');
+  
+    if (!userId) {
+      // No user selected → disable form
+      form.reset();
+      form.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+      return;
+    }
+  
+    try {
+      // Fetch that user’s data
+      const resp = await fetch(`/api/user/${userId}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  
+      const u = await resp.json();
+  
+      // Fill out the form with the user’s data
+      document.getElementById('inpName').value       = u.name;
+      document.getElementById('inpLast').value       = u.lastname;
+      document.getElementById('inpEmail').value      = u.email;
+      document.getElementById('inpUser').value       = u.username;
+      document.getElementById('inpRole').value       = u.role;
+      document.getElementById('inpPaytype').value    = u.paytype;
+      document.getElementById('inpPay').value        = u.pay;
+  
+      // Enable all fields when a user is chosen
+      form.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+  
+      // Point the POST action at the correct update route
+      form.action = `/api/update/${userId}`;
+    }
+    catch(err) {
+      alert('Failed to load user data: ' + err);
+    }
+  });
+</script>
+
+<!-- JS for searchable dropdown menus, very cool -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Choices('#userSelectEdit', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+    new Choices('#userSelectDelete', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+  });
+</script>
 {% endblock %}
