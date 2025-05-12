@@ -127,7 +127,7 @@ def team():
 #Contact
 @app.route('/contact')
 def contact():
-    return render_template('contact.html')
+    return render_template('contactV3.html')
 
 #Dashboard
 @app.route('/dashboard')

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    min-height: 100vh;
+  }
+
+  .form-container, .card {
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-primary {
+    background-color: #0069d9;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background-color: #004fa3;
+  }
+
+  .card-img-top {
+    object-fit: cover;
+    height: 200px;
+    width: 100%;
+  }
+</style>
+
+<div class="container py-5">
+  <div class="row justify-content-center align-items-center">
+    <!-- Form: on the left on desktop -->
+    <div class="col-md-6 order-md-1" data-aos="fade-right">
+      <div class="mb-4">
+        <h1>Contact us</h1>
+        <p><strong>Mohamed</strong> is awake 24/7, chained to a desk.<br />Ready to answer any questions!</p>
+      </div>
+
+      <form class="p-4 bg-white form-container" data-aos="fade-up" data-aos-delay="100">
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <input type="email" class="form-control" id="email" placeholder="name@example.com" required />
+        </div>
+        <div class="mb-3">
+          <label for="message" class="form-label">Message</label>
+          <textarea class="form-control" id="message" rows="5" placeholder="Tell us what's on your mind" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Submit</button>
+      </form>
+    </div>
+
+    <!-- Image Card: on the right on desktop -->
+    <div class="col-md-5 order-md-2 text-center mt-4 mt-md-0" data-aos="fade-left" data-aos-delay="200">
+      <div class="card">
+        <img src="static/mo_stol.png" class="card-img-top" alt="Mohamed hard at work" />
+        <div class="card-body">
+          <p class="card-text">Mohamed volunteered as tribute!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AOS Animation Script -->
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    AOS.init({
+      duration: 800,
+      once: true,
+      offset: 400
+    });
+  });
+</script>
+{% endblock %}
