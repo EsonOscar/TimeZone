@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-
+  <div class="row">
     <div class="col-md-6 order-md-1" data-aos="fade-right">
       <div class="mb-4">
         <h1>Contact us</h1>
         <p><strong>Mohamed</strong> is awake 24/7, chained to a desk.<br />Ready to answer any questions!</p>
       </div>
+    </div>
+  </div>
 
+  <div class="row">
+    <div class="col-md-7 order-md-1">
       <form class="p-4 bg-white shadow rounded-4" data-aos="fade-up" data-aos-delay="100">
         <div class="mb-3">
           <label for="email" class="form-label">Email address</label>
@@ -20,9 +24,9 @@
       </form>
     </div>
 
-    <div class="col-md-5 order-md-2 text-center mt-4 mt-md-0" data-aos="fade-left" data-aos-delay="200">
-      <div class="card shadow rounded-4 overflow-hidden">
-        <img src="{{ url_for('static', filename='mo_stol.png') }}" class="card-img-top" alt="Mohamed hard at work" style="height: 200px; object-fit: cover;">
+    <div class="col-md-5 order-md-2 text-center mt-4 mt-md-0 mb-3" data-aos="fade-left" data-aos-delay="200">
+      <div class="card shadow rounded-4 overflow-hidden mx-auto" style="width:250px;">
+        <img src="static/mo_stol.png" class="card-img-top" alt="Mohamed hard at work" style="width:100%; height:auto; object-fit:contain;">
         <div class="card-body">
           <p class="card-text">Mohamed volunteered as tribute!</p>
         </div>
@@ -30,7 +34,6 @@
     </div>
     
   </div>
-</div>
 
 <!-- AOS Animation Script -->
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
@@ -39,7 +42,7 @@
     AOS.init({
       duration: 800,
       once: true,
-      offset: 400
+      offset: 0
     });
   });
 </script>
