@@ -187,7 +187,8 @@ def admin():
         return render_template('admin.html', users=users)
     else:
         return render_template('forbidden.html')
-    
+
+# My profile
 @app.route("/user")
 @login_required
 def user():
