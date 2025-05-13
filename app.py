@@ -362,6 +362,7 @@ def update(user_id):
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
+        conn.close()
         return redirect(url_for('admin'))
     finally:
         conn.close()
@@ -483,6 +484,8 @@ def delete(user_id):
             conn.close()
         flash(f"User \"{user["username"]}\" deleted successfully.", "success")
         return redirect(url_for('admin'))
+
+
 
 ################################################### CONFIG #####################################################
 
