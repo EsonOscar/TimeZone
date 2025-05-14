@@ -136,7 +136,7 @@ def dashboard():
     if current_user.is_authenticated and current_user.is_employee:
         return render_template('dashboard.html')
     elif current_user.is_authenticated and current_user.is_org_admin:
-        return render_template('orgadmin_dashboard.html')
+        return render_template("orgadmin_dashboard.html")
     elif current_user.is_authenticated and current_user.is_sysadmin:
         return render_template('sysadmin_dashboard.html')
     else:
@@ -188,6 +188,12 @@ def admin():
     else:
         return render_template('forbidden.html')
 
+# TimeZone
+@app.route('/timezone')
+@login_required
+def timezone():
+    pass
+
 # My profile
 @app.route("/user")
 @login_required
@@ -200,9 +206,10 @@ def user():
     else:
         return render_template('forbidden.html')
 
-#TimeZone
-@app.route('/timezone')
-def timezone():
+#Dashboard
+@login_required
+@admin_required
+def orgdash():
     # Opretter forbindelse til SQLite-databasen
     conn = sqlite3.connect('TimeZone.db')
     # Sørger for, at cursoren returnerer rækker som sqlite3
@@ -243,7 +250,7 @@ def timezone():
     # Lukker databaseforbindelsen
     conn.close()
 
-    return render_template('timezone.html', sessions=sessions, employees=employees)
+    return render_template('orgadmin_dashboard.html', sessions=sessions, employees=employees)
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
