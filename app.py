@@ -490,12 +490,13 @@ def contactAPI():
     print(f"User contact API endpoint hit")
     email      = request.form.get("email", "").strip()
     message    = request.form.get("message", "").strip()
+    ip         = request.remote_addr 
 
     utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
 
     try:
         conn = db_connect()
-        row = conn.execute("""SELECT * FROM contact WHERE email = ? AND timediff(?,timestamp) > "00:01:00" ORDER BY id DESC LIMIT 1""", (email, utc_dt))
+        row = conn.execute("""SELECT * FROM contact WHERE email = ? AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" ORDER BY id DESC LIMIT 1""", (email, utc_dt))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -507,7 +508,20 @@ def contactAPI():
     if not email or not message:
         flash("Both fields are required!", "danger")
         return redirect(url_for("contact")) 
-    #elif email == row.get("email"): 
+    elif  row:
+        flash("Gotta wait buddy hehe", "danger") 
+        return redirect (url_for("contact"))
+    try:
+        conn = db_connect()
+        conn.execute("""INSERT INTO contact (
+                     email, message, ip, timestamp) VALUES (?,?,?,?)""", (email, message, ip, utc_dt))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        flash("Database error", "danger") 
+        conn.close() 
+        return redirect(url_for("contact"))
+
     return redirect(url_for("contact"))
 
 
