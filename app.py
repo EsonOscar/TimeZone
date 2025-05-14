@@ -507,10 +507,7 @@ def contactAPI():
     if not email or not message:
         flash("Both fields are required!", "danger")
         return redirect(url_for("contact")) 
-    elif email == row.get("email"): 
-        
-
-
+    #elif email == row.get("email"): 
     return redirect(url_for("contact"))
 
 
