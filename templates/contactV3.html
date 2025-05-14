@@ -1,24 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
-  <div class="row">
+  <div class="row mt-4 mb-2">
     <div class="col-md-6 order-md-1" data-aos="fade-right">
       <div class="mb-4">
         <h1>Contact us</h1>
         <p><strong>Mohamed</strong> is awake 24/7, chained to a desk.<br />Ready to answer any questions!</p>
       </div>
     </div>
+    <div class="col-md-6 order-md-1">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
   </div>
 
   <div class="row">
     <div class="col-md-7 order-md-1">
-      <form class="p-4 bg-white shadow rounded-4" data-aos="fade-up" data-aos-delay="100">
+      <form id="contactform" method="POST" action="{{ url_for('contactAPI') }}" class="p-4 bg-white shadow rounded-4" data-aos="fade-up" data-aos-delay="100">
         <div class="mb-3">
           <label for="email" class="form-label">Email address</label>
-          <input type="email" class="form-control" id="email" placeholder="name@example.com" required />
+          <input name="email" type="email" class="form-control" id="email" placeholder="name@example.com" required />
         </div>
         <div class="mb-3">
-          <label for="message" class="form-label">Message</label>
-          <textarea class="form-control" id="message" rows="5" placeholder="Tell us what's on your mind" required></textarea>
+          <label for="message" class="form-label">Message (150 characters maximum)</label>
+          <input name="message" class="form-control" id="message" rows="5" placeholder="Tell us what's on your mind" required></textarea>
         </div>
         <button type="submit" class="btn btn-primary w-100">Submit</button>
       </form>

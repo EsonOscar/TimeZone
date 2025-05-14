@@ -187,7 +187,8 @@ def admin():
         return render_template('admin.html', users=users)
     else:
         return render_template('forbidden.html')
-    
+
+# My profile
 @app.route("/user")
 @login_required
 def user():
@@ -412,6 +413,7 @@ def update(user_id):
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
+        conn.close()
         return redirect(url_for('admin'))
     finally:
         conn.close()
@@ -533,6 +535,68 @@ def delete(user_id):
             conn.close()
         flash(f"User \"{user["username"]}\" deleted successfully.", "success")
         return redirect(url_for('admin'))
+    
+@app.route("/api/contact", methods=["POST"])
+def contactAPI():
+    print(f"User contact API endpoint hit")
+    email      = request.form.get("email", "").strip()
+    message    = request.form.get("message", "").strip()
+    ip         = request.remote_addr 
+
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+
+    try:
+        conn = db_connect() 
+        try:
+            row = conn.execute("""SELECT * FROM contact WHERE email = ? AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" ORDER BY id DESC LIMIT 1""", (email, utc_dt)).fetchone()
+            row = dict(row)
+            conn.commit()
+        except Exception as e:
+            print(f"Error: {e}")
+            row = None
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        flash("Database error", "danger") 
+        print(f"Database error: {e}")
+        conn.close() 
+        return redirect(url_for("contact"))
+
+    print(row)
+
+    print(f"{email}, {message}")
+    # Check if the email and message fields are empty
+    if not email or not message:
+        print(f"Both fields are required!")
+        flash("Both fields are required!", "danger")
+        return redirect(url_for("contact"))
+    elif len(message) > 150:
+        print("Message is too long!")
+        flash("Message is too long, please use less than 150 characters.", "warning")
+        return redirect(url_for("contact"))
+    elif  row != None:
+        print(f"User {email} tried to spam the contact form!")
+        flash("Gotta wait buddy hehe", "danger") 
+        return redirect (url_for("contact"))
+    
+    try:
+        print(f"User {email} sent a message: {message}")
+        print("Updating database...")
+        conn = db_connect()
+        conn.execute("""INSERT INTO contact (email, message, ip, timestamp) VALUES (?,?,?,?)""", (email, message, ip, utc_dt))
+        conn.commit()
+        conn.close()
+        flash("Message sent successfully!", "success")
+    except Exception as e:
+        flash("Database error", "danger") 
+        conn.close() 
+        return redirect(url_for("contact"))
+
+    return redirect(url_for("contact"))
+
+
+
 
 ################################################### CONFIG #####################################################
 
