@@ -188,12 +188,6 @@ def admin():
     else:
         return render_template('forbidden.html')
 
-# TimeZone
-@app.route('/timezone')
-@login_required
-def timezone():
-    pass
-
 # My profile
 @app.route("/user")
 @login_required
@@ -534,7 +528,7 @@ def delete(user_id):
             conn.close()
         flash(f"User \"{user["username"]}\" deleted successfully.", "success")
         return redirect(url_for('admin'))
-    
+
 @app.route("/api/contact", methods=["POST"])
 def contactAPI():
     print(f"User contact API endpoint hit")
