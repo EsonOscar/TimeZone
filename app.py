@@ -483,6 +483,35 @@ def delete(user_id):
             conn.close()
         flash(f"User \"{user["username"]}\" deleted successfully.", "success")
         return redirect(url_for('admin'))
+    
+@app.route("/api/contact", methods=["POST"])
+def contactAPI():
+    print(f"User contact API endpoint hit")
+    email      = request.form.get("email", "").strip()
+    message    = request.form.get("message", "").strip()
+
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+
+    try:
+        conn = db_connect()
+        row = conn.execute("""SELECT * FROM contact WHERE email = ? AND timediff(?,timestamp) > "00:01:00" ORDER BY id DESC LIMIT 1""", (email, utc_dt))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        flash("Database error", "danger") 
+        conn.close() 
+        return redirect(url_for("contact"))
+
+    print(f"{email}, {message}")
+    if not email or not message:
+        flash("Both fields are required!", "danger")
+        return redirect(url_for("contact")) 
+    elif email == row.get("email"): 
+        
+
+
+    return redirect(url_for("contact"))
+
 
 ################################################### CONFIG #####################################################
 
