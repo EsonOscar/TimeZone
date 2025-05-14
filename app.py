@@ -558,7 +558,7 @@ def contactAPI():
     print(row)
 
     print(f"{email}, {message}")
-    # Check if the email and message fields are empty
+
     if not email or not message:
         print(f"Both fields are required!")
         flash("Both fields are required!", "danger")
@@ -581,14 +581,11 @@ def contactAPI():
         conn.close()
         flash("Message sent successfully!", "success")
     except Exception as e:
-        flash("Database error", "danger") 
-        conn.close() 
+        flash("Database error", "danger")
+        conn.close()
         return redirect(url_for("contact"))
 
     return redirect(url_for("contact"))
-
-
-
 
 ################################################### CONFIG #####################################################
 
