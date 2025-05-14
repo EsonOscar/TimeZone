@@ -201,40 +201,27 @@ def user():
         return render_template('forbidden.html')
 
 #TimeZone
-def sqlite_timediff(end, start):
-    #Funktion til at beregne forskel mellem to tidsstempler i ISO-format
-    fmt = "%Y-%m-%dT%H:%M:%S"
-    # Parse end- og start-tidspunkter fra ISO-format
-    t_end   = datetime.strptime(end, fmt)
-    t_start = datetime.strptime(start, fmt)
-    # Beregn tidsforskel som timedelta
-    diff = t_end - t_start
-    # Returner timedelta som HH:MM:SS-streng
-    return str(diff)
-
-DB_FILE = "TimeZone.db"
-
-@app.route('/')
-def index():
+@app.route('/timezone')
+def timezone():
     # Opretter forbindelse til SQLite-databasen
-    conn = sqlite3.connect('DB_FILE')
+    conn = sqlite3.connect('TimeZone.db')
     # Sørger for, at cursoren returnerer rækker som sqlite3
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     # Henter raw sessions fra databasen, med TIMEDIFF
     raw_sessions = cursor.execute("""
-        SELECT medarbejder, check_in, check_out, 
-               TIMEDIFF(check_out, check_in) AS varighed
-        FROM sessions
-        ORDER BY check_in DESC
+        SELECT user, start_time, end_time, 
+               TIMEDIFF(end_time, start_time) AS varighed
+        FROM timeentries
+        ORDER BY start_time DESC
     """).fetchall()
 
     #Bygger en liste af sessions, hvor vi selv beregner varigheden
     sessions = []
     for s in raw_sessions:
-        check_in = datetime.fromisoformat(s['check_in'])
-        check_out = datetime.fromisoformat(s['check_out']) if s['check_out'] else None
+        check_in = datetime.fromisoformat(s['start_time'])
+        check_out = datetime.fromisoformat(s['end_time']) if s['end_time'] else None
         # Beregn varighed: hvis brugeren stadig arbejder, skriv "Still working"
         if check_out:
             varighed = str(check_out - check_in)
@@ -247,6 +234,11 @@ def index():
             'check_out': s['check_out'] or "N/A",
             'varighed': varighed
         })
+ 
+    employees = [] 
+    for session in sessions:
+        employees.append(session['medarbejder'])
+          
 
     # Lukker databaseforbindelsen
     conn.close()
