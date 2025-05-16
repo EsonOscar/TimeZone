@@ -2,6 +2,7 @@
 {% block content %}
 
 <h1>BLE Scanner</h1>
+<p>Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled. <br>(chrome://flags/#enable-experimental-web-platform-features)</p>
 <button id="scanBtn" class="btn btn-primary">Scan for BLE Devices</button>
 <ul id="deviceList"></ul>
 
@@ -36,7 +37,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     });
 
     // stop after 10s
-    setTimeout(() => scan.stop(), 10000);
+    setTimeout(() => scan.stop(), 1000);
   } catch (err) {
     console.error(err);
     alert('Failed to start scan: ' + err.message);

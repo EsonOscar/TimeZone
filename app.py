@@ -484,14 +484,17 @@ def update(user_id):
         return redirect(url_for('login'))
 
     # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
-    elif (user["role"] == "sysadmin" and current_user.id != 1) or (user["role"] == "sysadmin" and current_user.id != user_id):
-        print(f"\nWARNING ({utc_dt}):")
-        print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
-        print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
-        print(f"The incident has been logged.\n")
-        flash(f"SysAdmins users can only be modified by root, or by the account owner.", "warning")
+    ################## LOOK INTO THIS, LOGIC ISN'T SOUND ##################
+    elif user["role"] == "sysadmin" and current_user.id != 1:
+        if user["role"] == "sysadmin" and current_user.id != user_id:
+            print(f"\nWARNING ({utc_dt}):")
+            print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
+            print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+            print(f"The incident has been logged.\n")
+            flash(f"SysAdmins users can only be modified by root, or by the account owner.", "warning")
 
-        return redirect(url_for('admin'))
+            return redirect(url_for('admin'))
+        pass
 
     else:
         try:
