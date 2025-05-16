@@ -72,8 +72,38 @@
         <i class="bi bi-pencil-square"></i>
         Overview of hours worked
       </button>
+
+<!-- Tab panes -->
+  <div class="tab-content" id="adminTabsContent">
+    <!-- Manage Users Pane -->
+    <div
+      class="tab-pane fade show active"
+      id="pane-manage"
+      role="tabpanel"
+      aria-labelledby="tab-manage"
+    >
+      <div class="card shadow-sm p-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Name</th><th>Lastname</th><th>Email</th><th>Hours</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td>{{ u.name }}</td>
+              <td>{{ u.lastname }}</td>
+              <td>{{ u.email }}</td>
+              <td> TEST </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
     
-    	<!-- Main wrapper for the calendar application -->
+    <!-- Main wrapper for the calendar application -->
 	<div class="wrapper">
 		<div class="container-calendar">
 			<div id="left">
@@ -123,36 +153,6 @@
   
 </div>    
 
-<!-- JS for searchable dropdown menus, very cool -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    new Choices('#userSelectDelete', {
-      searchEnabled: true,
-      shouldSort: false,
-      itemSelectText: ''
-    });
-  });
-</script>
-
-					<!-- List to display reminders -->
-					<ul id="reminderList">
-						<li data-event-id="1">
-							<strong>Event Title</strong>
-							- Event Description on Event Date
-							<button class="delete-event"
-								onclick="deleteEvent(1)">
-								Delete
-							</button>
-						</li>
-					</ul>
-				</div>
-			</div>
-			
-				<table class="table-calendar"
-					id="calendar"
-					data-lang="en">
-					<thead id="thead-month"></thead>
-					
 	<!-- Include the JavaScript file for the calendar functionality -->
 	<script src="./script.js"></script>
     </li>
@@ -171,35 +171,21 @@
     </li>
   </ul>
 
-<!-- Tab panes -->
-  <div class="tab-content" id="adminTabsContent">
-    <!-- Manage Users Pane -->
-    <div
-      class="tab-pane fade show active"
-      id="pane-manage"
-      role="tabpanel"
-      aria-labelledby="tab-manage"
-    >
-      <div class="card shadow-sm p-4">
-        <table class="table table-striped mb-0">
-          <thead>
-            <tr>
-              <th>Name</th><th>Lastname</th><th>Email</th><th>Hours</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for u in users %}
-            <tr>
-              <td>{{ u.name }}</td>
-              <td>{{ u.lastname }}</td>
-              <td>{{ u.email }}</td>
-              <td> TEST </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    
-    
+<!-- JS for searchable dropdown menus, very cool -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Choices('#userSelectDelete', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+  });
+</script>
+			
+			<table class="table-calendar"
+				id="calendar"
+				data-lang="en">
+				<thead id="thead-month"></thead>
+					
+
   {% endblock %}

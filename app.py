@@ -143,9 +143,22 @@ def dashboard():
                              AND deleted_at IS NULL
                              ORDER BY role DESC""").fetchall()
         times = conn.execute("""SELECT user, start_time, end_time FROM timeentries
-                             WHERE machine = NULL
-                             AND date(timestamp,"start of month");""")
-                             
+                             WHERE machine IS NULL
+                             AND date(start_time, "start of month");""").fetchall()
+        
+        users = list(users)
+        i = 0
+        for user in users:
+            print(dict(users[i]))
+            i += 1
+
+        times = list(times)
+        i = 0
+        for entry in times:
+            print(dict(times[i]))
+            i += 1
+
+
         conn.close()
 
         return render_template("orgadmin_dashboard.html", users=users)
