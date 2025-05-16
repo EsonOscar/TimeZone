@@ -202,6 +202,7 @@ def user():
 
 #TimeZone
 @app.route('/timezone')
+@login_required
 def timezone():
     # Opretter forbindelse til SQLite-databasen
     conn = sqlite3.connect('TimeZone.db')
