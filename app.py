@@ -136,7 +136,18 @@ def dashboard():
     if current_user.is_authenticated and current_user.is_employee:
         return render_template('dashboard.html')
     elif current_user.is_authenticated and current_user.is_org_admin:
-        return render_template("orgadmin_dashboard.html")
+        conn = db_connect()
+        users = conn.execute("""SELECT name, lastname, email FROM users 
+                             WHERE role = "employee" 
+                             AND lastname != "root"
+                             AND deleted_at IS NULL
+                             ORDER BY role DESC""").fetchall()
+        times = conn.execute("""SELECT user, start_time, end_time FROM timeentries
+                             WHERE machine = NULL """)
+                             
+        conn.close()
+
+        return render_template("orgadmin_dashboard.html", users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         return render_template('sysadmin_dashboard.html')
     else:

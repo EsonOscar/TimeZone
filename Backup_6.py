@@ -17,7 +17,7 @@ timestamp = datetime.now().strftime('%Y-%m-%d.%H_%M_%S')
 
 for source_dir in source_dirs: # går igennem alle de mapper der er i source_dirs
     folder_name = os.path.basename(source_dir) # henter mappperne fra source_dirs
-    backup_dir = os.path.join(backup_root_dir, f"{folder_name}_backup-{timestamp}") #
+    backup_dir = os.path.join(backup_root_dir, f"{folder_name}_backup-{timestamp}") 
     # os.path.join gør det muligt at sammensætte stier på en platform så det virker i både windows og linux
     try:
         shutil.copytree(source_dir, backup_dir, ignore=shutil.ignore_patterns('.git')) #kopierer indholdet fra source_dir over i backup_dir. ignorerer mapper/filer der hedder .git.
