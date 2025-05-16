@@ -246,6 +246,13 @@ def orgdash():
 
     return render_template('orgadmin_dashboard.html', sessions=sessions, employees=employees)
 
+# TimeZone route
+# Employee time tracking and BLE scanning
+@app.route('/timezone')
+@login_required
+def time_zone():
+    return render_template('timezone.html')
+
 #Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
