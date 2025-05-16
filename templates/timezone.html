@@ -1,6 +1,47 @@
 {% extends "base.html" %}
 {% block content %}
 
+<h1>BLE Scanner</h1>
+<button id="scanBtn">Scan for BLE Devices</button>
+<ul id="deviceList"></ul>
 
+<script>
+document.getElementById('scanBtn').addEventListener('click', async () => {
+  const deviceList = document.getElementById('deviceList');
+  deviceList.innerHTML = '';
+
+  if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
+    return alert('Web Bluetooth scanning not supported or requires a flag in this browser.');
+  }
+
+  try {
+    // start scanning for all advertisements
+    const scan = await navigator.bluetooth.requestLEScan({
+      acceptAllAdvertisements: true,
+      keepRepeatedDevices: false
+    });
+
+    navigator.bluetooth.addEventListener('advertisementreceived', event => {
+      const name = event.device.name || 'Unknown';
+      const rssi = event.rssi;
+      // collect any manufacturer data
+      let mfgs = [];
+      for (const [companyId, dataView] of event.manufacturerData) {
+        const bytes = Array.from(new Uint8Array(dataView.buffer));
+        mfgs.push(`0x${companyId.toString(16)}:[${bytes.join(',')}]`);
+      }
+      const li = document.createElement('li');
+      li.textContent = `${name} (RSSI: ${rssi}) ${mfgs.length? 'Mfg: '+mfgs.join('; '): ''}`;
+      deviceList.appendChild(li);
+    });
+
+    // stop after 10s
+    setTimeout(() => scan.stop(), 10000);
+  } catch (err) {
+    console.error(err);
+    alert('Failed to start scan: ' + err.message);
+  }
+});
+</script>
 
 {% endblock %}

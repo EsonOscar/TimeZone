@@ -143,7 +143,8 @@ def dashboard():
                              AND deleted_at IS NULL
                              ORDER BY role DESC""").fetchall()
         times = conn.execute("""SELECT user, start_time, end_time FROM timeentries
-                             WHERE machine = NULL """)
+                             WHERE machine = NULL
+                             AND date(timestamp,"start of month");""")
                              
         conn.close()
 

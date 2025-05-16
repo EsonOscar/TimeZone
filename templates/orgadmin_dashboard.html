@@ -92,6 +92,48 @@
 				</div>
 				<div id="reminder-section">
 					<h3>Reminders</h3>
+
+        <!-- Delete User Pane -->
+    <div
+    class="tab-pane fade"
+    id="pane-delete"
+    role="tabpanel"
+    aria-labelledby="tab-delete"
+    >
+
+      <div class="card shadow-sm p-4 mb-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Select a user to delete:</label>
+            <select id="userSelectDelete" class="form-select">
+              <option value="">- Select User -</option>
+              {% for u in users %}
+                <option value="{{ u.id }}">
+                  {{ u.name }} {{ u.lastname }}
+                </option>
+              {% endfor %}
+            </select>
+            <button id="btnDelete" type="submit" class="btn btn-danger" disabled>
+              Delete User
+            </button>
+          </div>
+        </div>
+      </div>
+  </div>
+  
+</div>    
+
+<!-- JS for searchable dropdown menus, very cool -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Choices('#userSelectDelete', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+  });
+</script>
+
 					<!-- List to display reminders -->
 					<ul id="reminderList">
 						<li data-event-id="1">
@@ -159,44 +201,5 @@
       </div>
     </div>
     
-    <!-- Delete User Pane -->
-    <div
-    class="tab-pane fade"
-    id="pane-delete"
-    role="tabpanel"
-    aria-labelledby="tab-delete"
-    >
-
-      <div class="card shadow-sm p-4 mb-4">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Select a user to delete:</label>
-            <select id="userSelectDelete" class="form-select">
-              <option value="">- Select User -</option>
-              {% for u in users %}
-                <option value="{{ u.id }}">
-                  {{ u.name }} {{ u.lastname }}
-                </option>
-              {% endfor %}
-            </select>
-            <button id="btnDelete" type="submit" class="btn btn-danger" disabled>
-              Delete User
-            </button>
-          </div>
-        </div>
-      </div>
-  </div>
-  
-</div>    
-
-<!-- JS for searchable dropdown menus, very cool -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    new Choices('#userSelectDelete', {
-      searchEnabled: true,
-      shouldSort: false,
-      itemSelectText: ''
-    });
-  });
-</script>
+    
   {% endblock %}
