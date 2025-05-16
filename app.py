@@ -452,7 +452,7 @@ def update(user_id):
         return redirect(url_for('login'))
 
     # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
-    elif (user["role"] == "sysadmin" and current_user.id != 1) and (user["role"] == "sysadmin" and current_user.id != user_id):
+    elif (user["role"] == "sysadmin" and current_user.id != 1) or (user["role"] == "sysadmin" and current_user.id != user_id):
         print(f"\nWARNING ({utc_dt}):")
         print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
@@ -511,8 +511,8 @@ def delete(user_id):
     elif user_id == current_user.id:
         flash(f"Don't delete yourself, you have so much to live for!", "danger")
         return redirect(url_for('admin'))
-    # Do not allow deletion of sysadmin users
-    elif user["role"] == "sysadmin":
+    # Do not allow deletion of sysadmin users, unless done by root sysadmin
+    elif user["role"] == "sysadmin" and current_user.id != 1:
         flash(f"SysAdmin users can't be deleted.", "danger")
         return redirect(url_for('admin'))
     

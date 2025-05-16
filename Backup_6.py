@@ -4,12 +4,12 @@ from datetime import datetime # gør det muligt at hente dato og tid
 
 # oprindelige mappe route 
 source_dirs = [
-    "/home/eson/TimeZone"
+    "/home/eson/TimeZone/"
     #"C:\\Users\\TobiasBissø\\Desktop\\static", # grunden til man bruger dobbelt \\ er fordi af et \ bruges som escape karakter i python
     #"C:\\Users\\TobiasBissø\\Desktop\\job ansøgning" #man kan bruge r foran hele stien for at undgå at bruge \\
 ]
 # routen til hvor backup skal være
-backup_root_dir = "/home/eson/backupfun"
+backup_root_dir = "/home/eson/backupfun/TimeZone_backup"
 
 #tidsstemple 
 timestamp = datetime.now().strftime('%Y-%m-%d.%H_%M_%S') 
