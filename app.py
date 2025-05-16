@@ -136,7 +136,7 @@ def dashboard():
     if current_user.is_authenticated and current_user.is_employee:
         return render_template('dashboard.html')
     elif current_user.is_authenticated and current_user.is_org_admin:
-        return render_template('orgadmin_dashboard.html')
+        return render_template("orgadmin_dashboard.html")
     elif current_user.is_authenticated and current_user.is_sysadmin:
         return render_template('sysadmin_dashboard.html')
     else:
@@ -200,9 +200,10 @@ def user():
     else:
         return render_template('forbidden.html')
 
-#TimeZone
-@app.route('/timezone')
-def timezone():
+#Dashboard
+@login_required
+@admin_required
+def orgdash():
     # Opretter forbindelse til SQLite-databasen
     conn = sqlite3.connect('TimeZone.db')
     # Sørger for, at cursoren returnerer rækker som sqlite3
@@ -243,7 +244,7 @@ def timezone():
     # Lukker databaseforbindelsen
     conn.close()
 
-    return render_template('timezone.html', sessions=sessions, employees=employees)
+    return render_template('orgadmin_dashboard.html', sessions=sessions, employees=employees)
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
@@ -451,7 +452,7 @@ def update(user_id):
         return redirect(url_for('login'))
 
     # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
-    elif (user["role"] == "sysadmin" and current_user.id != 1) and (user["role"] == "sysadmin" and current_user.id != user_id):
+    elif (user["role"] == "sysadmin" and current_user.id != 1) or (user["role"] == "sysadmin" and current_user.id != user_id):
         print(f"\nWARNING ({utc_dt}):")
         print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
@@ -510,8 +511,8 @@ def delete(user_id):
     elif user_id == current_user.id:
         flash(f"Don't delete yourself, you have so much to live for!", "danger")
         return redirect(url_for('admin'))
-    # Do not allow deletion of sysadmin users
-    elif user["role"] == "sysadmin":
+    # Do not allow deletion of sysadmin users, unless done by root sysadmin
+    elif user["role"] == "sysadmin" and current_user.id != 1:
         flash(f"SysAdmin users can't be deleted.", "danger")
         return redirect(url_for('admin'))
     
@@ -527,7 +528,7 @@ def delete(user_id):
             conn.close()
         flash(f"User \"{user["username"]}\" deleted successfully.", "success")
         return redirect(url_for('admin'))
-    
+
 @app.route("/api/contact", methods=["POST"])
 def contactAPI():
     print(f"User contact API endpoint hit")
