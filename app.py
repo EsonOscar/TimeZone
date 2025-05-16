@@ -594,8 +594,6 @@ def contactAPI():
         return redirect(url_for("contact"))
 
     return redirect(url_for("contact"))
-
-@app.route("/api/tjek", methods=["POST"])
     
 
 
