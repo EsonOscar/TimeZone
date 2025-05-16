@@ -595,6 +595,10 @@ def contactAPI():
 
     return redirect(url_for("contact"))
 
+@app.route("/api/tjek", methods=["POST"])
+    
+
+
 ################################################### CONFIG #####################################################
 
 # Config, app runs locally on port 5000. NGINX proxies outisde requests to this port, and sends the apps response back to the client.
