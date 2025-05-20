@@ -1,19 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 
-
-
-
-
-<div class="card mt-4" style="width: 18rem;">
-  <img src="{{ url_for('static', filename='bluetooth-logo-1.png') }}" class="card-img-top" alt="...">
-  <div class="card-body">
-    <h5 class="card-title">BLE Scanner</h5>
-    <p class="card-text">Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled. (chrome://flags/#enable-experimental-web-platform-features)</p>
-    <button id="scanBtn" class="btn btn-primary">Scan for BLE Devices</button>
+<div class="row mt-4 mb-2">
+  <div class="col d-flex align-items-center justify-content-center">
+    <div class="card mt-4 h-100 img-fluid" style="max-width: 300px; height: 120px; display: inline-block; object-fit: cover; margin-right: 40px;">
+      <img src="{{ url_for('static', filename='bluetooth-logo-1.png') }}" class="card-img-top" alt="...">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">BLE Scanner</h5>
+        <p class="card-text">Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled.<br>(chrome://flags/#enable-experimental-web-platform-features)</p>
+        <button id="scanBtn" class="btn btn-primary">Scan for BLE Devices</button>
+      </div>
+    </div>
+    <div class="card mt-4 h-100 img-fluid" style="max-width: 300px; height: 120px; display: inline-block; object-fit: cover;">
+      <img src="{{ url_for('static', filename='tzlogo2.png') }}" class="card-img-top" alt="...">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">Start your working day</h5>
+        <p class="card-text">Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled.<br>(chrome://flags/#enable-experimental-web-platform-features)</p>
+        <button id="scanBtn" class="btn btn-primary">Start Day</button>
+      </div>
+    </div>
   </div>
 </div>
-
 <ul id="deviceList"></ul>
 
 
