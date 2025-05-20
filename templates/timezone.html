@@ -34,29 +34,37 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     return alert('Web Bluetooth scanning not supported or requires a flag in this browser.');
   }
 
+  const MY_UUIDS = [
+    'e1d807c66dd44345a7449c5b492144c1',
+    'f5ed34bf10914715888652cb7c606411',
+    '3843a27a1e934a1ba89eb0e0cef97c50',
+    '5bae6c80d05f44bdb09359b8d4d9aba5'
+  ];
+
   try {
-    // start scanning for all advertisements
+    // build one filter per UUID
+    const filters = MY_UUIDS.map(uuid => ({ services: [ uuid ] }));
     const scan = await navigator.bluetooth.requestLEScan({
-      acceptAllAdvertisements: true,
+      filters,
       keepRepeatedDevices: false
     });
 
     navigator.bluetooth.addEventListener('advertisementreceived', event => {
-      const name = event.device.name || 'Unknown';
-      const rssi = event.rssi;
-      // collect any manufacturer data
-      let mfgs = [];
-      for (const [companyId, dataView] of event.manufacturerData) {
-        const bytes = Array.from(new Uint8Array(dataView.buffer));
-        mfgs.push(`0x${companyId.toString(16)}:[${bytes.join(',')}]`);
-      }
-      const li = document.createElement('li');
-      li.textContent = `${name} (RSSI: ${rssi}) ${mfgs.length? 'Mfg: '+mfgs.join('; '): ''}`;
-      deviceList.appendChild(li);
+      MY_UUIDS.forEach(uuid => {
+        const dataView = event.serviceData.get(uuid);
+        if (!dataView) return;
+
+        // decode the raw bytes into a string
+        const msg = new TextDecoder().decode(dataView.buffer);
+
+        const li = document.createElement('li');
+        li.textContent = `${event.device.name || uuid.slice(0,8)} → "${msg}" (RSSI: ${event.rssi})`;
+        deviceList.appendChild(li);
+      });
     });
 
     // stop after 10s
-    setTimeout(() => scan.stop(), 1000);
+    setTimeout(() => scan.stop(), 10_000);
   } catch (err) {
     console.error(err);
     alert('Failed to start scan: ' + err.message);
