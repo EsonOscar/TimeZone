@@ -13,7 +13,7 @@ f5ed34bf-1091-4715-8886-52cb7c606411
 """
 
 UUID_BE = bytes.fromhex('e1d807c66dd44345a7449c5b492144c1')
-UUID_LE = UUID_BE[::-1]
+UUID_LE = bytes(reversed(UUID_BE))
 MESSAGE = b"Tractor A"
 
 ble = bt.BLE()
