@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>BLE Scanner</h1>
-<p>Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled. <br>(chrome://flags/#enable-experimental-web-platform-features)</p>
-<button id="scanBtn" class="btn btn-primary">Scan for BLE Devices</button>
+
+
+
+
+<div class="card mt-4" style="width: 18rem;">
+  <img src="{{ url_for('static', filename='bluetooth-logo-1.png') }}" class="card-img-top" alt="...">
+  <div class="card-body">
+    <h5 class="card-title">BLE Scanner</h5>
+    <p class="card-text">Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled. (chrome://flags/#enable-experimental-web-platform-features)</p>
+    <button id="scanBtn" class="btn btn-primary">Scan for BLE Devices</button>
+  </div>
+</div>
+
 <ul id="deviceList"></ul>
+
+
 
 <script>
 document.getElementById('scanBtn').addEventListener('click', async () => {

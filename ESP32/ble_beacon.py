@@ -1,3 +1,4 @@
+# Will only work on an ESP32 with MicroPython
 import ubluetooth as bt, struct, time
 from micropython import const
 
