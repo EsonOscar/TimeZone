@@ -136,7 +136,32 @@ def dashboard():
     if current_user.is_authenticated and current_user.is_employee:
         return render_template('dashboard.html')
     elif current_user.is_authenticated and current_user.is_org_admin:
-        return render_template("orgadmin_dashboard.html")
+        conn = db_connect()
+        users = conn.execute("""SELECT name, lastname, email FROM users 
+                             WHERE role = "employee" 
+                             AND lastname != "root"
+                             AND deleted_at IS NULL
+                             ORDER BY role DESC""").fetchall()
+        times = conn.execute("""SELECT user, start_time, end_time FROM timeentries
+                             WHERE machine IS NULL
+                             AND date(start_time, "start of month");""").fetchall()
+        
+        users = list(users)
+        i = 0
+        for user in users:
+            print(dict(users[i]))
+            i += 1
+
+        times = list(times)
+        i = 0
+        for entry in times:
+            print(dict(times[i]))
+            i += 1
+
+
+        conn.close()
+
+        return render_template("orgadmin_dashboard.html", users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         return render_template('sysadmin_dashboard.html')
     else:
@@ -459,14 +484,17 @@ def update(user_id):
         return redirect(url_for('login'))
 
     # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
-    elif (user["role"] == "sysadmin" and current_user.id != 1) or (user["role"] == "sysadmin" and current_user.id != user_id):
-        print(f"\nWARNING ({utc_dt}):")
-        print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
-        print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
-        print(f"The incident has been logged.\n")
-        flash(f"SysAdmins users can only be modified by root, or by the account owner.", "warning")
+    ################## LOOK INTO THIS, LOGIC ISN'T SOUND ##################
+    elif user["role"] == "sysadmin" and current_user.id != 1:
+        if user["role"] == "sysadmin" and current_user.id != user_id:
+            print(f"\nWARNING ({utc_dt}):")
+            print(f"Attempt has been made to modify the sysadmin user: \"{username}\"")
+            print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+            print(f"The incident has been logged.\n")
+            flash(f"SysAdmins users can only be modified by root, or by the account owner.", "warning")
 
-        return redirect(url_for('admin'))
+            return redirect(url_for('admin'))
+        pass
 
     else:
         try:
