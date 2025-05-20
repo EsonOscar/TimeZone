@@ -1,120 +1,90 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container py-5">
-  <!--overscrift2-->
-  <div class="text-center py-5">
-    <h1 class="display-4">Medarbejder Check-in &amp; Check-out</h1>
-    <p class="text-muted">Oversigt over dagens sessioner</p>
-  </div>
-</div>
+<style>
+  /* non-active pills */
+  #adminTabs .nav-link { background: #ffffff; color: #495057; }
+  /* override each active pill */
+  #tab-manage.active  { background: #0d6efd; color: #fff; }
+  #tab-create.active  { background: #0d6efd; color: #fff; }
+  #tab-edit.active    { background: #0d6efd; color: #fff; }
+  #tab-delete.active  { background: #dc3545; color: #fff; }
+</style>
 
-<!--Vælg medarbejder og vis måned/uge skema-->
-<div class="Crad shadow-sm mb-5">
-  <div class="card-body">
-    <h5 class="card-title">Se skema for medarbejder</h5>
-    <form action="/stats" metod="get" class="row g-3 align-items-end">
-      <div class="col-md-6">
-        <label for="stats-employee" class="form-label">Vælg medarbejder</label>
-        <select id="stats-employee" name="medarbejder" class="form-select" required>
-          <option value="" disabled selected>-- Vælg medarbejder --</option>
-          <!-- loop, opret en 'optioin' per medarbejder i listen employees-->
-          {% for employee in employees %}
-          <option value="{{ employee }}">{% if selected == employee %}selected{% endif %}>{{ employee }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit">Vis skema</button>
-      </div>
-    </form>
-
-    {% if selected %}
-    <hr>
-    <div class="row text-center gy-4">
+<div class="container py-4">
+  <div class="row">
+    <div class="col">
+      <h1 class="h3 mb-1">SysAdmin Control Panel</h1>
+      <p class="text-muted">Welcome, {{ current_user.name }}!</p>
+    </div>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
     </div>
   </div>
-</div>
+  
+  
 
-<!-- Måned -->
-  <div class="col-md-6">
-    <div class="card border-info h-100">
-      <div class="vard-body">
-        <h6 class="card-title">Total timer denne måned</h6>
-        <p class="display-5">{{ stats_month }} t</p>
-      </div>
-    </div>
-  </div>
-  <!-- Uge -->
-   <div class="col-md-6">
-    <div class="card boarder-warning h-100">
-      <div class="card-body">
-        <h6 class="card-title">Total timer denne uge</h6>
-        <p class="display-5">{{ stats_week }} t</p>
-      </div>
-    </div>
-   </div>
-   {% endif %}
+  <!-- Nav pills -->
+  <ul class="nav nav-pills mb-4 mt-1" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link active"
+        id="tab-manage"
+        data-bs-toggle="pill"
+        data-bs-target="#pane-manage"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-people me-1"></i>
+        User List
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="tab-create"
+        data-bs-toggle="pill"
+        data-bs-target="#pane-create"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-person-plus me-1"></i>
+        Create User Account
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="tab-edit"
+        data-bs-toggle="pill"
+        data-bs-target="#pane-edit"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-pencil-square"></i>
+        Edit User
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link"
+        id="tab-delete"
+        data-bs-toggle="pill"
+        data-bs-target="#pane-delete"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-trash"></i>
+        Delete User
+      </button>
+    </li>
+  </ul>
 
-<!-- Check in -->
-<form action="/checkin" method="post" class="row g-3 mb-4">
-  <div class="col-auto">
-    <div class="table-responsive">
-   <table class="table table-striped">Organisation & Admin profile</table>
-  </div>
-  <!-- Dropdown menu til at vælge medarbejder, der skal checke ind-->
-    <select name="medarbejder" class="form-control" required>
-      <option value="" disabled selected>Vælg medarbejder</option>
-      <!-- loop, opret en 'optioin' per medarbejder i listen employees-->
-      {% for employee in employees %}
-      <option value="{{ employee }}">{{ employee }}</option>
-      {% endfor %}
-    </select>
-   </div>
-  <div class="col-auto">
-    <!-- sender det afsted til check in-->
-    <button class="btn btn-success" type="submit">Check-in</button>
-  </div>
-</form>
-
-<!-- Check out -->
-<form action="/checkout" method="post" class="row g-3 mb-4">
-  <div class="col-auto">
-    <!-- samme dropdown som ovenfor-->
-    <select name="medarbejder" class="form-control" required>
-      <option value="" disabled selected>Vælg medarbejder</option>
-      {% for employee in employees %}
-      <option value="{{ employee }}">{{ employee }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-auto">
-    <!-- knappen sender formularen afsted til checkout-->
-    <button class="btn btn-danger" type="submit">Check-out</button>
-  </div>
-</form>
-
-<!-- Session Table -->
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>Medarbejder</th>
-      <th>Check-in</th>
-      <th>Check-out</th>
-      <th>Varighed</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- vis en række per session-->
-    {% for s in sessions %}
-    <tr>
-      <td>{{ s.medarbejder }}</td>
-      <td>{{ s.check_in }}</td>
-      <td>{{ s.check_out }}</td>
-      <td>{{ s.varighed }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-{% endblock %}
