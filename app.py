@@ -588,8 +588,11 @@ def contactAPI():
 
     return redirect(url_for("contact"))
 
-@app.route("/api/tjek", methods=["POST"])
+@app.route("/api/orgadmin", methods=["POST"])
+
+def orgadminAPI()
     
+
 
 
 ################################################### CONFIG #####################################################
