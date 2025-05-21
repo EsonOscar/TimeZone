@@ -296,7 +296,6 @@ def time_zone():
                 active_machines = None
             print(f"Active machines: {active_machines}")
             conn.commit()
-            conn.close()
         except Exception as e:
             print(f"Database error: {e}")
             flash('Database error, please contact support', 'danger')
@@ -427,6 +426,7 @@ def timezone_machine_api():
         print(f"Invalid machine ID provided: {uuid}")
         return redirect(url_for('time_zone'))
 
+    # RECHECK LOGIC HERE SINCE THE ACTIVE COLUMN HAS BEEN ADDED TO THE TIMEENTRIES TABLE
     # Check if machine already has a start time today
     try:
         conn = db_connect()
