@@ -408,6 +408,8 @@ def timezone_machine_api():
         print(f"Invalid machine ID provided: {uuid}")
         return redirect(url_for('time_zone'))
 
+    # Check if machine already has a start time today
+
     """
     if current_user.role != "employee":
         flash("Only \"Employee\" accounts can create machine timestamps", "danger")
@@ -444,7 +446,7 @@ def timezone_machine_api():
     finally:
         conn.close()
     """
-
+    print("Reached the end of the function")
     return redirect(url_for('time_zone'))
     
     
