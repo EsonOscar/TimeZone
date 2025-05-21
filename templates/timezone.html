@@ -155,7 +155,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       btn.className = 'btn btn-success btn-sm';
       btn.addEventListener('click', async () => {
       try {
-        const res = await fetch('/api/timezone_machine', {
+        const res = await fetch('/api/timezone_machine/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uuid: found, name, rssi })
