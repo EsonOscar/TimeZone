@@ -409,6 +409,15 @@ def timezone_machine_api():
         return redirect(url_for('time_zone'))
 
     # Check if machine already has a start time today
+    try:
+        conn = db_connect()
+        
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('time_zone'))
+    finally:
+        conn.close()
 
     """
     if current_user.role != "employee":
