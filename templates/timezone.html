@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row mt-4 mb-2">
+  <div class="col d-flex align-items-center justify-content-center">
+    <div class="card mt-4 h-100 img-fluid" style="max-width: 300px; height: 120px; display: inline-block; object-fit: cover; margin-right: 40px;">
+      <img src="{{ url_for('static', filename='bluetooth-logo-1.png') }}" class="card-img-top" alt="...">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">BLE Scanner</h5>
+        <p class="card-text">Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled.<br>(chrome://flags/#enable-experimental-web-platform-features)</p>
+        <button id="scanBtn" class="btn btn-primary">Scan for BLE Devices</button>
+      </div>
+    </div>
+    <div class="card mt-4 h-100 img-fluid" style="max-width: 300px; height: 120px; display: inline-block; object-fit: cover;">
+      <img src="{{ url_for('static', filename='tzlogo2.png') }}" class="card-img-top" alt="...">
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">Start your working day</h5>
+        <p class="card-text">Requires Chrome / Chromium, and requires the flag "Experimental Web Platform features" set to enabled.<br>(chrome://flags/#enable-experimental-web-platform-features)</p>
+        <button id="scanBtn" class="btn btn-primary">Start Day</button>
+      </div>
+    </div>
+  </div>
+</div>
+<ul id="deviceList"></ul>
+
+
+
+<script>
+document.getElementById('scanBtn').addEventListener('click', async () => {
+  const deviceList = document.getElementById('deviceList');
+  deviceList.innerHTML = '';
+
+  if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
+    return alert('Web Bluetooth scanning not supported or requires a flag in this browser.');
+  }
+
+  const MY_UUIDS = [
+    'e1d807c66dd44345a7449c5b492144c1',
+    'f5ed34bf10914715888652cb7c606411',
+    '3843a27a1e934a1ba89eb0e0cef97c50',
+    '5bae6c80d05f44bdb09359b8d4d9aba5'
+  ];
+
+  try {
+    // build one filter per UUID
+    const filters = MY_UUIDS.map(uuid => ({ services: [ uuid ] }));
+    const scan = await navigator.bluetooth.requestLEScan({
+      filters,
+      keepRepeatedDevices: false
+    });
+
+    navigator.bluetooth.addEventListener('advertisementreceived', event => {
+      MY_UUIDS.forEach(uuid => {
+        const dataView = event.serviceData.get(uuid);
+        if (!dataView) return;
+
+        // decode the raw bytes into a string
+        const msg = new TextDecoder().decode(dataView.buffer);
+
+        const li = document.createElement('li');
+        li.textContent = `${event.device.name || uuid.slice(0,8)} → "${msg}" (RSSI: ${event.rssi})`;
+        deviceList.appendChild(li);
+      });
+    });
+
+    // stop after 10s
+    setTimeout(() => scan.stop(), 10_000);
+  } catch (err) {
+    console.error(err);
+    alert('Failed to start scan: ' + err.message);
+  }
+});
+</script>
+
+{% endblock %}
