@@ -378,7 +378,6 @@ def timezone_machine_api():
     print("Machine Timestamp API endpoint hit")
     print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
     data = request.data.decode('utf-8')
-    data = data.split(":")
     print(data)
 
 
