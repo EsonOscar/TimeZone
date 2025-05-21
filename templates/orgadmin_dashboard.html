@@ -9,7 +9,7 @@
   #tab-manage.active  { background: #0d6efd; color: #fff; }
   #tab-create.active  { background: #0d6efd; color: #fff; }
   #tab-edit.active    { background: #0d6efd; color: #fff; }
-  #tab-delete.active  { background: #dc3545; color: #fff; }
+  #tab-delete.active  { background: #0d6efd; color: #fff; }
 </style>
 
 <div class="container py-4">
@@ -100,13 +100,13 @@
     aria-labelledby="tab-delete"
     >
     
-<!-- Delete User pane -->
+<!-- Select User pane -->
   <div class="tab-content" id="adminTabsContent">
 
       <div class="card shadow-sm p-4 mb-4">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label">Select a user to delete:</label>
+            <label class="form-label">Select a user:</label>
             <select id="userSelectDelete" class="form-select">
               <option value="">- Select User -</option>
               {% for u in users %}
@@ -116,7 +116,7 @@
               {% endfor %}
             </select>
             <button id="btnDelete" type="submit" class="btn btn-danger" disabled>
-              Delete User
+              Select User
             </button>
           </div>
         </div>
@@ -156,41 +156,66 @@
     <!-- Overview of hours worked Pane -->
   <div class="tab-pane fade" id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
     <!-- Calendar application -->
-	<div class="wrapper">
-		<div class="container-calendar">
-			<div id="left">
-				<div id="event-section">
-					<h3></h3>
-          <div id="reminder-section">
-					<h3>Overview</h3>
-					<input type="date" id="eventDate">
-					<input type="text"
-						id="eventTitle"
-						placeholder="Event Title">
-					<input type="text"
-						id="eventDescription"
-						placeholder="Event Description">
-					<button id="addEvent" onclick="addEvent()">
-						Add
-					</button>
-				</div>
-				
-
-<!-- Calendar Table -->       
-        <table class="table-calendar"
-				id="calendar"
-				data-lang="en">
-				<thead id="thead-month"></thead>
-
+    <div id="reminder-section">
+      <div id="rangeResult" class="mt-2"></div>
+      <ul id="workList" class="mt-2"></ul>
+  <h3>Date</h3>
+  <label for="dateFrom">From:</label>
+  <input type="date" id="dateFrom">
+  <label for="dateTo" class="ms-2">To:</label>
+  <input type="date" id="dateTo">
+  <button id="searchRange" class="btn btn-primary btn-sm ms-2" type="button">
+    Search
+  </button>
+  <div id="rangeResult" class="mt-2"></div>
+</div> 
+	
 <!-- JS for searchable dropdown menus -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    // Delete Dropdown  
     new Choices('#userSelectDelete', {
       searchEnabled: true,
       shouldSort: false,
       itemSelectText: ''
     });
+
+    // Foreksempel hvad man har arbejdet
+    const workData = [
+      { date: '2025-05-18', hours: 8 },
+      { date: '2025-05-19', hours: 7 },
+      { date: '2025-05-20', hours: 6 },
+      { date: '2025-05-21', hours: 8 },
+      { date: '2025-05-22', hours: 5 }
+    ];
+
+document.getElementById('searchRange').addEventListener('click', function() {
+      const from = document.getElementById('dateFrom').value;
+      const to = document.getElementById('dateTo').value;
+      const result = document.getElementById('rangeResult');
+      const list = document.getElementById('workList');
+      list.innerHTML = '';
+
+      if (from && to) {
+        // Filter workData between from and to
+        const filtered = workData.filter(entry =>
+          entry.date >= from && entry.date <= to
+        );
+        if (filtered.length > 0) {
+          result.textContent = `Hours worked from ${from} to ${to}:`;
+          filtered.forEach(entry => {
+            const li = document.createElement('li');
+            li.textContent = `${entry.date}: ${entry.hours} hours`;
+            list.appendChild(li);
+          });
+        } else {
+          result.textContent = 'No work records found for this range.';
+        }
+      } else {
+        result.textContent = 'Please select both dates.';
+      }
+    });
   });
 </script>
-    
-  {% endblock %}
+
+{% endblock %}

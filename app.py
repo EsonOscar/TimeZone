@@ -1,17 +1,17 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_socketio import SocketIO, emit
+#from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.serving import WSGIRequestHandler
 from cryptography.fernet import Fernet
-from flask_cors import CORS
+#from flask_cors import CORS
 from functools import wraps
 from datetime import datetime, timezone, timedelta
 from time import sleep
 import sqlite3
 
-# Tell Flask to show the actual request IP in the log, instead of 127.0.0.1
+# Tell Flask to show the actual request IP in the log, instead of 127.0.0.1 (NGINX)
 # The request handler is used in the app.run() method
 class ProxiedRequestHandler(WSGIRequestHandler):
     def address_string(self):
@@ -21,7 +21,7 @@ class ProxiedRequestHandler(WSGIRequestHandler):
             return forwarded.split(',')[0].strip()
         return super().address_string()
 
-#Initialise the flask app, socketIO and CORS
+#Initialise the flask app and CORS
 app = Flask(__name__, static_folder="/home/eson/timezone_static", static_url_path="/static")
 app.secret_key = "super_duper_secret_key"
 
@@ -29,7 +29,10 @@ app.secret_key = "super_duper_secret_key"
 # The app is behind cloudflare, and a reverse proxy, so the third entry is the real client IP
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 #socketio = SocketIO(app)
-CORS(app)
+
+# CORS would be used to allow cross-origin requests, but it's not needed for this app,
+# since all HTML rendering and API requests are done from the same domain
+#CORS(app)
 
 #Inistialize the login manager
 login_manager = LoginManager()
@@ -238,7 +241,7 @@ def orgdash():
     # Henter raw sessions fra databasen, med TIMEDIFF
     raw_sessions = cursor.execute("""
         SELECT user, start_time, end_time, 
-               TIMEDIFF(end_time, start_time) AS varighed
+        TIMEDIFF(end_time, start_time) AS varighed
         FROM timeentries
         ORDER BY start_time DESC
     """).fetchall()
@@ -276,6 +279,7 @@ def orgdash():
 @app.route('/timezone')
 @login_required
 def time_zone():
+
     return render_template('timezone.html')
 
 #Login
@@ -345,6 +349,37 @@ def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 ############################################# API ENDPOINTS BELOW ##############################################
+
+# API Route for machine timestamp creation
+@app.route("/api/timezone_machine/<int:machine_id>", methods=["POST"])
+@login_required
+def timezone_machine_api():
+    print("Machine Timestamp API endpoint hit")
+    print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+    
+
+# API Route for employee timestamp creation
+@app.route("/api/timezone_user/", methods=["POST"])
+@login_required
+def timezone_user_api():
+    print(f"User Timestamp API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+    user = current_user.username
+
+    conn = db_connect()
+    try:
+        conn.execute('INSERT INTO timeentries (user, start_time) VALUES (?, ?)', (user, utc_dt))
+        conn.commit()
+        print(f"Timestamp created for user: {user} at {utc_dt}")
+        flash(f"Start Time created for user: {user} at {utc_dt}", "success")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+    finally:
+        conn.close()
+
+    return redirect(url_for('time_zone'))
 
 #Route for an admin to create a new user.
 #Data from the create user form, located in the admin.html template, is sent to this route.
@@ -576,7 +611,9 @@ def contactAPI():
     try:
         conn = db_connect() 
         try:
-            row = conn.execute("""SELECT * FROM contact WHERE email = ? AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" ORDER BY id DESC LIMIT 1""", (email, utc_dt)).fetchone()
+            row = conn.execute("""SELECT * FROM contact WHERE email = ? 
+                               AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" 
+                               ORDER BY id DESC LIMIT 1""", (email, utc_dt)).fetchone()
             row = dict(row)
             conn.commit()
         except Exception as e:
