@@ -283,18 +283,34 @@ def time_zone():
     if current_user.is_authenticated and current_user.is_employee:
         try:
             conn = db_connect()
-            machines = conn.execute("""SELECT id, name FROM machines
+            # Get the list of machines from the database
+            machines = conn.execute("""SELECT id, name, uuid FROM machines
                                     ORDER BY id""").fetchall()
+            # Get the list of active machines from the database
+            active_machines = conn.execute("""SELECT machine FROM timeentries
+                                            WHERE active = 1
+                                            AND MACHINE IS NOT NULL
+                                            ORDER BY id""").fetchall()
+            active_machines = [str(machine[0]) for machine in active_machines]
+            if len(active_machines) == 0:
+                active_machines = None
+            print(f"Active machines: {active_machines}")
+            conn.commit()
             conn.close()
         except Exception as e:
             print(f"Database error: {e}")
-            flash('Database error', 'danger')
+            flash('Database error, please contact support', 'danger')
             return redirect(url_for('index'))
         finally:
             conn.close()
-        # Convert the machines to a list of dictionaries
+        # Convert the machine data to a list of dictionaries
         machines = [dict(machine) for machine in machines]
-        return render_template('timezone.html', machines=machines)
+        for machine in machines:
+            for entry in machine:
+                print(f"{entry}:{machine[entry]}")
+
+        print(f"Machines: {machines}")
+        return render_template('timezone.html', machines=machines, active_machines=active_machines)
     elif current_user.is_authenticated and current_user.is_org_admin:
 
         return render_template('timezone.html')
@@ -383,6 +399,7 @@ def timezone_machine_api():
     utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
     print(f"UUID: {uuid}")
     
+    # Check basic conditions, if the user is not an employee or if no UUID is provided
     if current_user.role != "employee":
         flash("Only \"Employee\" accounts can create machine timestamps", "danger")
         return redirect(url_for('time_zone'))
@@ -390,6 +407,7 @@ def timezone_machine_api():
         flash("No machine ID provided, please retry", "danger")
         return redirect(url_for('time_zone'))
     
+    # Get a list of all valid UUIDs from the database
     try:
         conn = db_connect()
         uuid_list = conn.execute("SELECT uuid FROM machines ORDER BY id").fetchall()
@@ -403,6 +421,7 @@ def timezone_machine_api():
     finally:
         conn.close()
     
+    # Check if the provided UUID is in the list of valid UUIDs
     if uuid not in uuid_list:
         flash("Invalid machine ID provided, please contact support", "danger")
         print(f"Invalid machine ID provided: {uuid}")
@@ -411,26 +430,41 @@ def timezone_machine_api():
     # Check if machine already has a start time today
     try:
         conn = db_connect()
-        machine = conn.execute('SELECT ')
-    except Exception as e:
-        print(f"Database error: {e}")
-        flash('Database error', 'danger')
-        return redirect(url_for('time_zone'))
-    finally:
-        conn.close()
-
-    """
-    if current_user.role != "employee":
-        flash("Only \"Employee\" accounts can create machine timestamps", "danger")
-        return redirect(url_for('time_zone'))
-    elif not uuid:
-        flash("No machine ID provided, please retry", "danger")
-        return redirect(url_for('time_zone'))
-
-    try:
-        conn = db_connect()
-        id_list = conn.execute("SELECT id FROM machines ODER BY id").fetchall()
+        machine = conn.execute('SELECT name FROM machines WHERE uuid = ?', (uuid,)).fetchone()
         conn.commit()
+        machine = str(machine[0])
+        print(f"Machine name: {machine}")
+        time_data = conn.execute('SELECT * FROM timeentries WHERE machine = ? AND DATE(start_time) = DATE(?) ORDER BY id DESC LIMIT 1', (machine, utc_dt)).fetchone()
+        conn.commit()
+        try:
+            time_data = dict(time_data)
+        except Exception as e:
+            print(f"Error converting time_data to dict: {e}")
+            print("Setting time_data to None")
+            time_data = None
+        print(f"Started? {time_data}")
+        # If the machine has no start time today, create a new entry
+        if not time_data:
+            conn.execute('INSERT INTO timeentries (user, machine, start_time) VALUES (?, ?, ?)',
+                         (current_user.username, machine, utc_dt))
+            conn.commit()
+            print(f"Start time created for machine: {machine} at {utc_dt}")
+        else:
+            # Check if the machine already has an end time today
+            ended = time_data.get("end_time")
+            print(f"Ended? {ended}")
+            # If the machine has no end time today, update entry with end time
+            if not ended:
+                conn.execute('UPDATE timeentries SET end_time = ? WHERE machine = ? AND DATE(start_time) = DATE(?) AND id = ?',
+                            (utc_dt, machine, utc_dt, time_data["id"]))
+                print(f"End time created for machine: {machine} at {utc_dt}")
+                conn.commit()
+            # If the machine has an end time today, create a new entry
+            else:
+                conn.execute('INSERT INTO timeentries (user, machine, start_time) VALUES (?, ?, ?)',
+                         (current_user.username, machine, utc_dt))
+                conn.commit()
+                print(f"Start time created for machine: {machine} at {utc_dt}")
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
@@ -438,23 +472,6 @@ def timezone_machine_api():
     finally:
         conn.close()
 
-    if machine_id not in id_list:
-        flash("Invalid machine ID provided, please retry", "danger")
-        return redirect(url_for('time_zone'))
-    
-    try:
-        conn = db_connect()
-        conn.execute('INSERT INTO timeentries (user, machine, start_time) VALUES (?, ?, ?)', 
-                     (current_user.username, machine_id, utc_dt))
-        conn.commit()
-        print(f"Timestamp created for user: {current_user.username} at {utc_dt}")
-        flash(f"Start Time created for user: {current_user.username} at {utc_dt}", "success")
-    except Exception as e:
-        print(f"Database error: {e}")
-        flash('Database error', 'danger')
-    finally:
-        conn.close()
-    """
     print("Reached the end of the function")
     return redirect(url_for('time_zone'))
     
@@ -599,13 +616,13 @@ def update(user_id):
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
         print(f"The incident has been logged.\n")
 
-        # If the user is root, log them out
+        # If the active user is root, log them out
         if current_user.lastname == "root":
             logout_user()
             flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
             return redirect(url_for('login'))
         
-        # If the user is not root, teach them a lesson
+        # If the active user is not root, teach them a lesson
         try:
             conn = db_connect()
             conn.execute("""UPDATE users SET name = ?, lastname = ? WHERE id = ?""", ("FJOLS", "FJOLS" ,current_user.id))
@@ -652,7 +669,7 @@ def update(user_id):
 
 # API endpoint to delete a user (soft delete)
 # Only accessible by admins, both sysadmin and org admin (org admin can only delete employees)
-# Be careful with this one pls pls
+# Be careful with this one pls pls (don't do it Katrin)
 @app.route("/api/delete/<int:user_id>")
 @login_required
 @admin_required

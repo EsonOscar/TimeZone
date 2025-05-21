@@ -94,6 +94,7 @@
           <div class="card shadow-sm p-4 mt-4 mb-4">
             <table class="table table-striped mb-0">
               <thead>
+                <p class="mx-auto d-block"><b>Machines found nearby:</b></p>
                 <tr>
                   <th>Machine</th><th>RSSI</th><th>Action</th>
                 </tr>
@@ -105,13 +106,39 @@
           </div>
         </div>
       </div>
-
+      <div class="row mt-4 mb-2">
+        <div class="col">
+          <div class="card shadow-sm p-4 mt-4 mb-4">
+            <table class="table table-striped mb-0">
+              <thead>
+                <p class="mx-auto d-block"><b>Already active machines:</b></p>
+                <tr>
+                  <th>Machine</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if active_machines %}
+                  {% for m in active_machines %}
+                    <tr>
+                      <td>{{ m }}</td>
+                    </tr>
+                  {% endfor %}
+                {% endif %}
+                {% if not active_machines %}
+                  <tr>
+                    <td>No active machines</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       
     </div>  
   </div>
 </div>
 
-  
 
 <!-- GO BACK AND LOOK AT THIS LATER, REMOVE HARDCODED UUIDS FROM HTML, SEND THEM FROM SERVER, BAD BAD NO SECURE -->
 <script>
