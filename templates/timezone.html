@@ -57,8 +57,7 @@
       class="tab-pane fade show active"
       id="pane-timezone"
       role="tabpanel"
-      aria-labelledby="tab-timezone"
-    >
+      aria-labelledby="tab-timezone">
       <div class="row mt-4 mb-2">
         <div class="col d-flex align-items-center justify-content-center">
           <div class="card mt-4 h-100 img-fluid" style="max-width: 300px; height: 120px; display: inline-block; object-fit: cover;">
@@ -111,7 +110,9 @@
     </div>  
   </div>
 </div>
+
   
+
 <!-- GO BACK AND LOOK AT THIS LATER, REMOVE HARDCODED UUIDS FROM HTML, SEND THEM FROM SERVER, BAD BAD NO SECURE -->
 <script>
 document.getElementById('scanBtn').addEventListener('click', async () => {
@@ -152,21 +153,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       const btn = document.createElement('button');
       btn.textContent = "START";
       btn.className = 'btn btn-success btn-sm';
-      //Look into logic here, lil unsure if found example is correct
-      btn.addEventListener('click', async () => {
-        try {
-          const res = await fetch('api/timezone_machine/${found}', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json' },
-            body: JSON.stringify({ uuid: found })
-          });
-          if (!res.ok) throw new Error(res.statusText);
-          alert('Machine time started successfully!');
-        } catch (err) {
-          console.error('Error starting machine time:', err);
-          alert('Error starting machine time: ' + err);
-        }
-      })
+      
       tdAction.appendChild(btn);
 
       row.appendChild(tdName);
@@ -187,5 +174,12 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     alert('Scan failed: ' + err);
   }
 });
+</script>
+
+ <script>
+   const startBtn = document.getElementByID("startBtn");
+                tartBtn.addEventListener("click", function(e) {
+                  console.log("din lorte dag er startet!");
+                }
 </script>
 {% endblock %}

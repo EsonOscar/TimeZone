@@ -372,11 +372,17 @@ def serve_sw():
 ############################################# API ENDPOINTS BELOW ##############################################
 
 # API Route for machine timestamp creation
-@app.route("/api/timezone_machine/<uuid>", methods=["POST"])
+@app.route("/api/timezone_machine/", methods=["POST"])
 @login_required
-def timezone_machine_api(uuid):
+def timezone_machine_api():
     print("Machine Timestamp API endpoint hit")
     print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    data = request.data.decode('utf-8')
+    data = data.split(":")
+    print(data)
+
+
+    """
     utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
 
     if current_user.role != "employee":
@@ -413,6 +419,9 @@ def timezone_machine_api(uuid):
         flash('Database error', 'danger')
     finally:
         conn.close()
+    """
+
+    return redirect(url_for('time_zone'))
     
     
 
