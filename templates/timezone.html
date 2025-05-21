@@ -155,7 +155,16 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       //Look into logic here, lil unsure if found example is correct
       btn.addEventListener('click', async () => {
         try {
-          const 
+          const res = await fetch('api/timezone_machine/${found}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid: found })
+          });
+          if (!res.ok) throw new Error(res.statusText);
+          alert('Machine time started successfully!');
+        } catch (err) {
+          console.error('Error starting machine time:', err);
+          alert('Error starting machine time: ' + err);
         }
       })
       tdAction.appendChild(btn);

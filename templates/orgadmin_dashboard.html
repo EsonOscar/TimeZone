@@ -100,26 +100,25 @@
     <!-- Overview Tab -->
     <div class="tab-pane fade" id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
       <div class="card shadow-sm p-4 mb-4">
-
-        <!-- Select User -->
-        <div class="mb-3">
-          <label for="userSelectOverview" class="form-label">Select a user:</label>
-          <select id="userSelectOverview" class="form-select">
-            <option value="">- Select User -</option>
-            {% for u in users %}
-              <option value="{{ u.id }}">{{ u.name }} {{ u.lastname }}</option>
-            {% endfor %}
-          </select>
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label for="dateFrom" class="form-label">From:</label>
+            <input type="date" id="dateFrom" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label for="dateTo" class="form-label">To:</label>
+            <input type="date" id="dateTo" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRange" class="btn btn-primary w-100">Search Range</button>
+          </div>
         </div>
-
-        <!-- Output -->
-        <div id="currentMonthResult" class="fw-bold mt-3"></div>
-        <ul id="currentMonthWorkList" class="list-group mt-2"></ul>
-
+        <div id="rangeResult" class="mb-2 fw-bold"></div>
+        <ul id="workList" class="list-group"></ul>
       </div>
     </div>
 
-    <!-- Empty Schedule Tab -->
+    <!-- Empty Schedule Tab (for future use) -->
     <div class="tab-pane fade" id="pane-create" role="tabpanel" aria-labelledby="tab-create">
       <div class="card shadow-sm p-4">Schedule content goes here.</div>
     </div>
@@ -130,65 +129,51 @@
 <!-- JS Section -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Enable delete button
-    const userSelectDelete = document.getElementById('userSelectDelete');
+    // Enable delete button if user is selected
+    const userSelect = document.getElementById('userSelectDelete');
     const btnDelete = document.getElementById('btnDelete');
-    if (userSelectDelete) {
-      userSelectDelete.addEventListener('change', () => {
-        btnDelete.disabled = userSelectDelete.value === "";
+    if (userSelect) {
+      userSelect.addEventListener('change', () => {
+        btnDelete.disabled = userSelect.value === "";
       });
     }
 
-    // Simulated work data
+    // Simulated data
     const workData = [
-      { userId: 1, date: '2025-05-01', hours: 8 },
-      { userId: 1, date: '2025-05-10', hours: 6 },
-      { userId: 1, date: '2025-05-21', hours: 4 },
-      { userId: 2, date: '2025-05-05', hours: 7 },
-      { userId: 2, date: '2025-05-20', hours: 5 },
-      { userId: 3, date: '2025-04-18', hours: 9 } // previous month
+      { date: '2025-05-18', hours: 8 },
+      { date: '2025-05-19', hours: 7 },
+      { date: '2025-05-20', hours: 6 },
+      { date: '2025-05-21', hours: 8 },
+      { date: '2025-05-22', hours: 5 }
     ];
 
-    // Overview hours worked this month
-    const userSelectOverview = document.getElementById('userSelectOverview');
-    const resultBox = document.getElementById('currentMonthResult');
-    const resultList = document.getElementById('currentMonthWorkList');
+    const searchBtn = document.getElementById('searchRange');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        const from = document.getElementById('dateFrom').value;
+        const to = document.getElementById('dateTo').value;
+        const result = document.getElementById('rangeResult');
+        const list = document.getElementById('workList');
+        list.innerHTML = '';
 
-    userSelectOverview.addEventListener('change', () => {
-      const userId = parseInt(userSelectOverview.value);
-      resultBox.textContent = '';
-      resultList.innerHTML = '';
-
-      if (!userId) return;
-
-      const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-
-      const filtered = workData.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return (
-          entry.userId === userId &&
-          entryDate.getMonth() === currentMonth &&
-          entryDate.getFullYear() === currentYear
-        );
+        if (from && to) {
+          const filtered = workData.filter(entry => entry.date >= from && entry.date <= to);
+          if (filtered.length > 0) {
+            result.textContent = `Hours worked from ${from} to ${to}:`;
+            filtered.forEach(entry => {
+              const li = document.createElement('li');
+              li.className = 'list-group-item';
+              li.textContent = `${entry.date}: ${entry.hours} hours`;
+              list.appendChild(li);
+            });
+          } else {
+            result.textContent = 'No work records found for this range.';
+          }
+        } else {
+          result.textContent = 'Please select both dates.';
+        }
       });
-
-      if (filtered.length > 0) {
-        let totalHours = 0;
-        filtered.forEach(entry => {
-          totalHours += entry.hours;
-          const li = document.createElement('li');
-          li.className = 'list-group-item';
-          li.textContent = `${entry.date}: ${entry.hours} hours`;
-          resultList.appendChild(li);
-        });
-        const monthName = today.toLocaleString('default', { month: 'long' });
-        resultBox.textContent = `Total hours worked in ${monthName}: ${totalHours}`;
-      } else {
-        resultBox.textContent = 'No records found for this user this month.';
-      }
-    });
+    }
   });
 </script>
 

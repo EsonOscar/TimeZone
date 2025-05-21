@@ -372,9 +372,9 @@ def serve_sw():
 ############################################# API ENDPOINTS BELOW ##############################################
 
 # API Route for machine timestamp creation
-@app.route("/api/timezone_machine/<int:machine_id>", methods=["POST"])
+@app.route("/api/timezone_machine/<uuid>", methods=["POST"])
 @login_required
-def timezone_machine_api(machine_id):
+def timezone_machine_api(uuid):
     print("Machine Timestamp API endpoint hit")
     print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
     utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
@@ -382,7 +382,7 @@ def timezone_machine_api(machine_id):
     if current_user.role != "employee":
         flash("Only \"Employee\" accounts can create machine timestamps", "danger")
         return redirect(url_for('time_zone'))
-    elif not machine_id:
+    elif not uuid:
         flash("No machine ID provided, please retry", "danger")
         return redirect(url_for('time_zone'))
 
