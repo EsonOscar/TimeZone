@@ -279,8 +279,29 @@ def orgdash():
 @app.route('/timezone')
 @login_required
 def time_zone():
+    if current_user.is_authenticated and current_user.is_employee:
+        try:
+            conn = db_connect()
+            machines = conn.execute("""SELECT id, name FROM machines
+                                    ORDER BY id""").fetchall()
+            conn.close()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+        # Convert the machines to a list of dictionaries
+        machines = [dict(machine) for machine in machines]
+        return render_template('timezone.html', machines=machines)
+    elif current_user.is_authenticated and current_user.is_org_admin:
 
-    return render_template('timezone.html')
+        return render_template('timezone.html')
+    elif current_user.is_authenticated and current_user.is_sysadmin:
+
+        return render_template('timezone.html')
+    else:
+        return render_template('forbidden.html')
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
@@ -358,16 +379,40 @@ def timezone_machine_api(machine_id):
     print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
     utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
 
-
-    if not machine_id:
-        flash("No machine ID provided, please retry", "danger")
-        return redirect(url_for('time_zone'))
-    elif current_user.role != "employee":
+    if current_user.role != "employee":
         flash("Only \"Employee\" accounts can create machine timestamps", "danger")
         return redirect(url_for('time_zone'))
-    elif machine_id not in range(1, 4):
+    elif not machine_id:
+        flash("No machine ID provided, please retry", "danger")
+        return redirect(url_for('time_zone'))
+
+    try:
+        conn = db_connect()
+        id_list = conn.execute("SELECT id FROM machines ODER BY id").fetchall()
+        conn.commit()
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('time_zone'))
+    finally:
+        conn.close()
+
+    if machine_id not in id_list:
         flash("Invalid machine ID provided, please retry", "danger")
         return redirect(url_for('time_zone'))
+    
+    try:
+        conn = db_connect()
+        conn.execute('INSERT INTO timeentries (user, machine, start_time) VALUES (?, ?, ?)', 
+                     (current_user.username, machine_id, utc_dt))
+        conn.commit()
+        print(f"Timestamp created for user: {current_user.username} at {utc_dt}")
+        flash(f"Start Time created for user: {current_user.username} at {utc_dt}", "success")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+    finally:
+        conn.close()
     
     
 
