@@ -411,7 +411,7 @@ def timezone_machine_api():
     # Check if machine already has a start time today
     try:
         conn = db_connect()
-        
+        machine = conn.execute('SELECT ')
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
