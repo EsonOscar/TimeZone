@@ -10,6 +10,7 @@ from functools import wraps
 from datetime import datetime, timezone, timedelta
 from time import sleep
 import sqlite3
+import json
 
 # Tell Flask to show the actual request IP in the log, instead of 127.0.0.1 (NGINX)
 # The request handler is used in the app.run() method
@@ -377,13 +378,37 @@ def serve_sw():
 def timezone_machine_api():
     print("Machine Timestamp API endpoint hit")
     print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
-    data = request.data.decode('utf-8')
-    print(data)
-
+    data = json.loads(request.data.decode('utf-8'))
+    uuid = data.get("uuid")
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+    print(f"UUID: {uuid}")
+    
+    if current_user.role != "employee":
+        flash("Only \"Employee\" accounts can create machine timestamps", "danger")
+        return redirect(url_for('time_zone'))
+    elif not uuid:
+        flash("No machine ID provided, please retry", "danger")
+        return redirect(url_for('time_zone'))
+    
+    try:
+        conn = db_connect()
+        uuid_list = conn.execute("SELECT uuid FROM machines ORDER BY id").fetchall()
+        uuid_list = [str(uuid[0]) for uuid in uuid_list]
+        print(uuid_list)
+        conn.commit()
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('time_zone'))
+    finally:
+        conn.close()
+    
+    if uuid not in uuid_list:
+        flash("Invalid machine ID provided, please contact support", "danger")
+        print(f"Invalid machine ID provided: {uuid}")
+        return redirect(url_for('time_zone'))
 
     """
-    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
-
     if current_user.role != "employee":
         flash("Only \"Employee\" accounts can create machine timestamps", "danger")
         return redirect(url_for('time_zone'))
