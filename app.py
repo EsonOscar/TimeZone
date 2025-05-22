@@ -401,10 +401,10 @@ def timezone_machine_api():
     # Check basic conditions, if the user is not an employee or if no UUID is provided
     if current_user.role != "employee":
         flash("Only \"Employee\" accounts can create machine timestamps", "danger")
-        return redirect(url_for('time_zone'))
+        return jsonify({ "success": False, "error": "Not permitted" }), 403
     elif not uuid:
         flash("No machine ID provided, please retry", "danger")
-        return redirect(url_for('time_zone'))
+        return jsonify({ "success": False, "error": "Missing UUID" }), 400
     
     # Get a list of all valid UUIDs from the database
     try:
@@ -416,7 +416,7 @@ def timezone_machine_api():
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
-        return redirect(url_for('time_zone'))
+        return jsonify({ "success": False, "error": "Database error" }), 400
     finally:
         conn.close()
     
@@ -424,7 +424,7 @@ def timezone_machine_api():
     if uuid not in uuid_list:
         flash("Invalid machine ID provided, please contact support", "danger")
         print(f"Invalid machine ID provided: {uuid}")
-        return redirect(url_for('time_zone'))
+        return jsonify({ "success": False, "error": "Invalid UUID" }), 400
 
     # RECHECK LOGIC HERE SINCE THE ACTIVE COLUMN HAS BEEN ADDED TO THE TIMEENTRIES TABLE
     # Check if machine already has a start time today
@@ -468,12 +468,12 @@ def timezone_machine_api():
     except Exception as e:
         print(f"Database error: {e}")
         flash('Database error', 'danger')
-        return redirect(url_for('time_zone'))
+        return jsonify({ "success": False, "error": "Database error" }), 400
     finally:
         conn.close()
 
     print("Reached the end of the function")
-    return redirect(url_for('time_zone'))
+    return jsonify({ "success": True }), 200
     
     
 

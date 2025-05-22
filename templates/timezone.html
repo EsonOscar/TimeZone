@@ -140,6 +140,12 @@
 </div>
 
 
+<!-- Save the list of active machines, to be able to change start button to stop button -->
+<script>
+  const activeMachines = JSON.parse('{{ active_machines|tojson|safe }}') || [];
+  console.log("Already active machines:", activeMachines)
+</script>
+
 <!-- GO BACK AND LOOK AT THIS LATER, REMOVE HARDCODED UUIDS FROM HTML, SEND THEM FROM SERVER, BAD BAD NO SECURE -->
 <script>
 document.getElementById('scanBtn').addEventListener('click', async () => {
@@ -178,22 +184,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
       const tdAction = document.createElement('td');
       const btn = document.createElement('button');
-      btn.textContent = "START";
-      btn.className = 'btn btn-success btn-sm';
-      btn.addEventListener('click', async () => {
-      try {
-        const res = await fetch('/api/timezone_machine/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uuid: found, name, rssi })
-        });
-        if (!res.ok) throw new Error(res.statusText);
-        alert("Machine time started successfully");
-      } catch (err) {
-        console.error(err);
-        alert('Report failed');
-      }
-    });
+      btn.className = 'btn btn-sm';
       tdAction.appendChild(btn);
 
       row.appendChild(tdName);
@@ -201,6 +192,48 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       row.appendChild(tdAction);
       tbody.appendChild(row);
     }
+    
+    const btn = row.querySelector('button');
+    const isActive = Array.isArray(activeMachines) && activeMachines.includes(name);
+    btn.textContent = isActive ? 'STOP' : 'START';
+    btn.classList.toggle('btn-success', !isActive);
+    btn.classList.toggle('btn-danger',  isActive);
+
+    // 2.3.4) Click-handler: POST to your API and update activeMachines locally
+    btn.onclick = async () => {
+      try {
+        const res = await fetch('/api/timezone_machine/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uuid: found })
+        });
+        const payload = await res.json();
+        // Quick sanity check, to see the API response code
+        //alert("API response: " + res.status + " Payload:" + payload.success);
+        if (res.status !== 200 || payload.success !== true) {
+          throw new Error(payload.error || `HTTP ${res.status}`);
+        }
+
+        // reflect the change in our JS array
+        if (isActive) {
+          alert('Machine stopped');
+          //const idx = activeMachines.indexOf(name);
+          //if (idx > -1) activeMachines.splice(idx, 1);
+        } else {
+          alert('Machine started');
+          //activeMachines.push(name);
+        }
+
+        // flip button after success
+        btn.textContent = isActive ? 'START' : 'STOP';
+        btn.classList.toggle('btn-success', isActive);
+        btn.classList.toggle('btn-danger',  !isActive);
+        location.reload();
+      } catch (err) {
+        console.error('API error:', err);
+        alert('Request failed');
+      }
+    };
   });
 
   try {
