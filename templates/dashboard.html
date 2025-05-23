@@ -2,68 +2,65 @@
 
 {% block content %}
 
-<!-- Overskrift -->
-<div class="container">
-    <div class="header" style="margin-top: 30px;">
-        <h1 style="text-align: center; margin-top: 10px;">Employee Dashboard</h1>
+<div class="container py-4">
+  <div class="row">
+    <div class="col">
+      <h1 class="h3 mb-1">Monthly overview of hours worked</h1>
+      <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+  </div>
+  <div class="row">
+    <div class="card shadow-sm p-4">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for time in times %}
+          <tr>
+            <td>{{ time.start_time }}</td>
+            <td>{{ time.end_time }}</td>
+            <td>{{ time.duration }}</td>
+            <td>{{ time.overtime }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="row mt-4">
+    <div class="card shadow-sm p-4">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Total time worked this month</th><th>Total overtime this month</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for time in times %}
+          <tr>
+            <td>{{ time.start_time }}</td>
+            <td>{{ time.end_time }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
-
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-table {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
-}
-
-td, th {
-  border: 1px solid #dddddd;
-  text-align: left;
-  padding: 8px;
-}
-
-tr:nth-child(even) {
-  background-color: #dddddd;
-}
-</style>
-</head>
-<body>
-
-<h2>Måneds Arbjedsplan</h2>
-
-<!-- Table -->
-<table class = "table"> 
-
-  <tr>
-    <th>Dato</th>
-    <th>Tid arbejdet</th>
-    <th>Overtid</th>
-  </tr>
-
-
-<!-- Arbejds timer -->
-  {% for entry in times %}
-  <tr>
-    <td>{{ entry['start_time'] }}</td>
-    <td>{{ entry['start_time'] }}</td>
-    <td>{{ entry['end_time'] }}</td>
-  </tr>
-
-  {% endfor %}
-</table>
-
-<table>
-  <tr>
-    <th>----</th>
-    <th>Total tid arbejdet</th>
-    <th>Total tid overarbejdet</th>
-  </tr>
-</table>
-</body>
-</html>
 
 
 

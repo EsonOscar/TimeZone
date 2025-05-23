@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from time import sleep
 import sqlite3
 import json
+import os
 
 # Tell Flask to show the actual request IP in the log, instead of 127.0.0.1 (NGINX)
 # The request handler is used in the app.run() method
@@ -114,6 +115,15 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+#Load the Fernet key from the environment variable (saved in .bashrc, don't tell anyone shhh)
+FERNET_KEY = os.environ.get('FERNET_KEY')
+if not FERNET_KEY:
+    print("ooooh boi u in danger, the fernet key wasn't found")
+    exit(1)
+else:
+    print("Fernet key found in environment variable, and loaded successfully")
+    print("We lucky :D")
+
 ############################################# WEBSITE ROUTES BELOW #############################################
 
 #Index
@@ -142,15 +152,30 @@ def dashboard():
 
         try: 
             conn = db_connect()
-            times = conn.execute('''SELECT start_time, end_time FROM timeentries
+            times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
+                         CASE 
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                         END AS overtime
+                         FROM timeentries
                          WHERE user = ?
                          AND start_time >= DATE("now", "start of month")
                          AND end_time IS NOT NULL
                          AND machine IS NULL
                          ORDER BY start_time ASC''', (user,)).fetchall()
-            #print(f"Times: {times}")
-            #times = list(times)
-
+            conn.commit()
+            times = [dict(time) for time in times]
+            #totaltime = datetime.strptime("00:00:00", "%H:%M:%S")
+            for time in times:
+                time["duration"] = time["duration"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+                #totaltime = totaltime + datetime.strptime(time["duration"], "%H:%M:%S")
+                #print(f"Total time: {totaltime}")
+            
+            print("#################################################")
+            print(f"Times: {times}")
+            print(datetime.strptime(times[0]["duration"], "%H:%M:%S"))
+            print("#################################################")
 
         except Exception as e:
             print(f"Database error: {e}")
@@ -159,35 +184,57 @@ def dashboard():
         finally:
             conn.close()
 
-
         return render_template('dashboard.html', times=times)
     elif current_user.is_authenticated and current_user.is_org_admin:
-        conn = db_connect()
-        users = conn.execute("""SELECT name, lastname, email FROM users 
-                             WHERE role = "employee" 
-                             AND lastname != "root"
-                             AND deleted_at IS NULL
-                             ORDER BY role DESC""").fetchall()
-        times = conn.execute("""SELECT user, start_time, end_time FROM timeentries
-                             WHERE machine IS NULL
-                             AND date(start_time, "start of month");""").fetchall()
+
+        try:
+            conn = db_connect()
+            # Add back later: AND lastname != "root"
+            users = conn.execute("""SELECT username, name, lastname FROM users 
+                                WHERE role = "employee"                               
+                                AND deleted_at IS NULL
+                                ORDER BY name ASC""").fetchall()
+            
+            times = conn.execute('''SELECT user, start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
+                                CASE 
+                                    WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                                    THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                                END AS overtime
+                                FROM timeentries
+                                WHERE end_time IS NOT NULL
+                                AND machine IS NULL
+                                ORDER BY start_time ASC''').fetchall()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+
+        users = [dict(user) for user in users]
+        times = [dict(time) for time in times]
+
+        print("#################################################")
+        print(f"Times: {times}")
+        print(f"Users: {users}")
+        print("#################################################")
+
+        for time in times:
+            for user in users:
+                if time["user"] == user["username"]:
+                    time["user"] = user["name"] + " " + user["lastname"]
+                    break
         
-        users = list(users)
-        i = 0
-        for user in users:
-            print(dict(users[i]))
-            i += 1
-
-        times = list(times)
-        i = 0
-        for entry in times:
-            print(dict(times[i]))
-            i += 1
+        for time in times:
+                time["duration"] = time["duration"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+            
+        print("#################################################")
+        print(f"Times: {times}")
+        print("#################################################")
 
 
-        conn.close()
-
-        return render_template("orgadmin_dashboard.html", users=users)
+        return render_template("orgadmin_dashboardV2.html", times=times, users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         return render_template('sysadmin_dashboard.html')
     else:
@@ -288,10 +335,10 @@ def time_zone():
         return render_template('timezone.html', machines=machines, active_machines=active_machines)
     elif current_user.is_authenticated and current_user.is_org_admin:
 
-        return render_template('admin_timezone.html')
+        return render_template('timezone.html')
     elif current_user.is_authenticated and current_user.is_sysadmin:
 
-        return render_template('admin_timezone.html')
+        return render_template('timezone.html')
     else:
         return render_template('forbidden.html')
 
@@ -373,6 +420,12 @@ def change_password():
     print(f"Change password API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
     
     username = current_user.username
+    lastname = current_user.lastname
+
+    if lastname == "root":
+        print(f"An attempt has been made to change the password for the root user.")
+        flash(f"You cannot change the password for a root user.", "danger")
+        return redirect(url_for('user'))
 
     try:
         conn = db_connect()
@@ -809,6 +862,7 @@ def contactAPI():
 
     return redirect(url_for("contact"))
     
+
 
 
 ################################################### CONFIG #####################################################
