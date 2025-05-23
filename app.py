@@ -185,6 +185,8 @@ def dashboard():
             conn.close()
 
         return render_template('dashboard.html', times=times)
+    
+    # REMOVE LOGIC ONECE API IS SET UP
     elif current_user.is_authenticated and current_user.is_org_admin:
 
         try:
@@ -412,6 +414,17 @@ def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 ############################################# API ENDPOINTS BELOW ##############################################
+
+# API route for fetching user work times
+@app.route('/api/times', methods=['GET'])
+@login_required
+@admin_required
+def get_times():
+    user_id = request.args.get('id', '').strip()
+
+    if not user_id:
+        start = request.args.get('dateFromGeneral', '')
+        end = request.args.get('dateToGeneral', '')
 
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
