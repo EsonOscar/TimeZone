@@ -151,7 +151,6 @@ def dashboard():
             #print(f"Times: {times}")
             #times = list(times)
 
-            
 
         except Exception as e:
             print(f"Database error: {e}")
