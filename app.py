@@ -288,10 +288,10 @@ def time_zone():
         return render_template('timezone.html', machines=machines, active_machines=active_machines)
     elif current_user.is_authenticated and current_user.is_org_admin:
 
-        return render_template('timezone.html')
+        return render_template('admin_timezone.html')
     elif current_user.is_authenticated and current_user.is_sysadmin:
 
-        return render_template('timezone.html')
+        return render_template('admin_timezone.html')
     else:
         return render_template('forbidden.html')
 
