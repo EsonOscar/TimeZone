@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <style>
   #adminTabs .nav-link { background: #ffffff; color: #495057; }
   #tab-manage.active, #tab-create.active, #tab-edit.active {
@@ -15,19 +14,9 @@
       <h1 class="h3 mb-1">Org Control Panel</h1>
       <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
-    <div class="col">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, msg in messages %}
-          <div class="mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endwith %}
-    </div>
   </div>
 
-  <!-- Nav Pills -->
+  <!-- Nav Tabs -->
   <ul class="nav nav-pills mb-4 mt-1" id="adminTabs" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="tab-manage" data-bs-toggle="pill" data-bs-target="#pane-manage" type="button" role="tab">
@@ -46,11 +35,10 @@
     </li>
   </ul>
 
-  <!-- Tab Content -->
   <div class="tab-content" id="adminTabsContent">
 
-    <!-- User List -->
-    <div class="tab-pane fade show active" id="pane-manage" role="tabpanel" aria-labelledby="tab-manage">
+    <!-- User List Tab -->
+    <div class="tab-pane fade show active" id="pane-manage" role="tabpanel">
       <div class="card shadow-sm p-4">
         <table class="table table-striped mb-0">
           <thead>
@@ -73,13 +61,16 @@
     </div>
 
     <!-- Overview Tab -->
-    <div class="tab-pane fade" id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
+    <div class="tab-pane fade" id="pane-edit" role="tabpanel">
       <div class="card shadow-sm p-4 mb-4">
+
+        <!-- User Selection -->
         <div class="row g-3 mb-3">
           <div class="col-md-4">
-            <label class="form-label">Select User:</label>
+            <label for="userSelectOverview" class="form-label">Select User:</label>
             <select id="userSelectOverview" class="form-select">
               <option value="">- Select User -</option>
+              <option value="all">All Users</option>
               {% for u in users %}
                 <option value="{{ u.id }}">{{ u.name }} {{ u.lastname }}</option>
               {% endfor %}
@@ -87,90 +78,116 @@
           </div>
         </div>
 
-        <!-- Calendar Date Range Picker -->
-        <div class="row">
-          <div class="col-sm-6 mb-3 mb-sm-0">
-            <div data-coreui-locale="en-US" data-coreui-toggle="date-range-picker"></div>
+        <!-- Date Picker Section (Always Shown) -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="dateFrom" class="form-label">From:</label>
+            <input type="date" id="dateFrom" class="form-control">
           </div>
-          <div class="col-sm-6">
-            <div
-              data-coreui-start-date="2022/08/03"
-              data-coreui-end-date="2022/08/17"
-              data-coreui-locale="en-US"
-              data-coreui-toggle="date-range-picker">
-            </div>
+          <div class="col-md-4">
+            <label for="dateTo" class="form-label">To:</label>
+            <input type="date" id="dateTo" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRange" class="btn btn-primary w-100">Filter Hours</button>
           </div>
         </div>
 
-        <!-- Output -->
+        <!-- Result Summary -->
         <div id="currentMonthResult" class="fw-bold mt-3"></div>
-        <ul id="currentMonthWorkList" class="list-group mt-2"></ul>
+
+        <!-- Table of Work Records -->
+        <div class="table-responsive mt-3">
+          <table class="table table-striped-columns" id="workRecordsTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Hours Worked</th>
+                <th>Overtime hours</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
 
       </div>
     </div>
 
-    <!-- Empty Schedule Tab -->
-    <div class="tab-pane fade" id="pane-create" role="tabpanel" aria-labelledby="tab-create">
+    <!-- Schedule Tab -->
+    <div class="tab-pane fade" id="pane-create" role="tabpanel">
       <div class="card shadow-sm p-4">Schedule content goes here.</div>
     </div>
 
   </div>
 </div>
 
-<!-- JS Section -->
+<!-- JavaScript -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Simulated work data
     const workData = [
-      { userId: 1, date: '2025-05-01', hours: 8 },
-      { userId: 1, date: '2025-05-10', hours: 6 },
-      { userId: 1, date: '2025-05-21', hours: 4 },
-      { userId: 2, date: '2025-05-05', hours: 7 },
-      { userId: 2, date: '2025-05-20', hours: 5 },
-      { userId: 3, date: '2025-04-18', hours: 9 } // previous month
+      { userId: 1, name: 'oscar', lastname: 'lugter', date: '2025-05-01', hours: 8 },
+      { userId: 1, name: 'Bent', lastname: 'Over', date: '2025-05-10', hours: 6 },
+      { userId: 1, name: 'Deez', lastname: 'Nuts', date: '2025-05-21', hours: 4 },
+      { userId: 2, name: 'Imap', lastname: 'Ussay', date: '2025-05-05', hours: 7 },
+      { userId: 2, name: 'Grab', lastname: 'Cock', date: '2025-05-20', hours: 5 },
+      { userId: 3, name: 'gylpe', lastname: 'Gylp', date: '2025-04-18', hours: 9 }
     ];
 
-    // Overview hours worked this month
-    const userSelectOverview = document.getElementById('userSelectOverview');
+    const userSelect = document.getElementById('userSelectOverview');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    const searchBtn = document.getElementById('searchRange');
     const resultBox = document.getElementById('currentMonthResult');
-    const resultList = document.getElementById('currentMonthWorkList');
+    const tableBody = document.querySelector('#workRecordsTable tbody');
 
-    userSelectOverview.addEventListener('change', () => {
-      const userId = parseInt(userSelectOverview.value);
+    function isValidDate(d) {
+      return d instanceof Date && !isNaN(d);
+    }
+
+    searchBtn.addEventListener('click', () => {
+      const selectedValue = userSelect.value;
+      const from = new Date(dateFrom.value);
+      const to = new Date(dateTo.value);
       resultBox.textContent = '';
-      resultList.innerHTML = '';
+      tableBody.innerHTML = '';
 
-      if (!userId) return;
+      if (!selectedValue || !isValidDate(from) || !isValidDate(to)) {
+        resultBox.textContent = "Please select a user and valid date range.";
+        return;
+      }
 
-      const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-
-      const filtered = workData.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return (
-          entry.userId === userId &&
-          entryDate.getMonth() === currentMonth &&
-          entryDate.getFullYear() === currentYear
-        );
-      });
-
-      if (filtered.length > 0) {
-        let totalHours = 0;
-        filtered.forEach(entry => {
-          totalHours += entry.hours;
-          const li = document.createElement('li');
-          li.className = 'list-group-item';
-          li.textContent = `${entry.date}: ${entry.hours} hours`;
-          resultList.appendChild(li);
+      let results = [];
+      if (selectedValue === 'all') {
+        results = workData.filter(entry => {
+          const entryDate = new Date(entry.date);
+          return entryDate >= from && entryDate <= to;
         });
-        const monthName = today.toLocaleString('default', { month: 'long' });
-        resultBox.textContent = `Total hours worked in ${monthName}: ${totalHours}`;
       } else {
-        resultBox.textContent = 'No records found for this user this month.';
+        const userId = parseInt(selectedValue);
+        results = workData.filter(entry => {
+          const entryDate = new Date(entry.date);
+          return entry.userId === userId && entryDate >= from && entryDate <= to;
+        });
+      }
+
+      if (results.length > 0) {
+        let total = 0;
+        results.forEach(entry => {
+          total += entry.hours;
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${entry.name} ${entry.lastname}</td>
+            <td>${entry.date}</td>
+            <td>${entry.hours}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+        resultBox.textContent = `Total hours from ${dateFrom.value} to ${dateTo.value}: ${total} hours`;
+      } else {
+        resultBox.textContent = "No records found in selected range.";
       }
     });
   });
 </script>
-
 {% endblock %}

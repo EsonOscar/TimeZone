@@ -146,14 +146,19 @@ def dashboard():
                          WHERE user = ?
                          AND start_time >= DATE("now", "start of month")
                          AND end_time IS NOT NULL
+                         AND machine IS NULL
                          ORDER BY start_time ASC''', (user,)).fetchall()
+            #print(f"Times: {times}")
+            #times = list(times)
+
+            
+
         except Exception as e:
             print(f"Database error: {e}")
             flash('Database error, please contact support', 'danger')
             return redirect(url_for('index'))
         finally:
             conn.close()
-
 
 
         return render_template('dashboard.html', times=times)

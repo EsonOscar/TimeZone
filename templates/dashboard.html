@@ -34,17 +34,25 @@ tr:nth-child(even) {
 
 <h2>Måneds Arbjedsplan</h2>
 
-<!-- Arbejds timer -->
-
-
 <!-- Table -->
 <table class = "table"> 
-<table>
+
   <tr>
     <th>Dato</th>
     <th>Tid arbejdet</th>
     <th>Overtid</th>
+  </tr>
 
+
+<!-- Arbejds timer -->
+  {% for entry in times %}
+  <tr>
+    <td>{{ entry['start_time'] }}</td>
+    <td>{{ entry['start_time'] }}</td>
+    <td>{{ entry['end_time'] }}</td>
+  </tr>
+
+  {% endfor %}
 </table>
 
 <table>
@@ -52,10 +60,11 @@ tr:nth-child(even) {
     <th>----</th>
     <th>Total tid arbejdet</th>
     <th>Total tid overarbejdet</th>
-
+  </tr>
 </table>
-
 </body>
 </html>
+
+
 
 {% endblock %}
