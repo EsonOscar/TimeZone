@@ -14,7 +14,7 @@ f5ed34bf-1091-4715-8886-52cb7c606411
 
 UUID_BE = bytes.fromhex('e1d807c66dd44345a7449c5b492144c1')
 UUID_LE = bytes(reversed(UUID_BE))
-MESSAGE = b"Tractor A"
+MESSAGE = b"Tobias Seje Traktor"
 
 ble = bt.BLE()
 ble.active(True)
@@ -22,9 +22,14 @@ ble.active(True)
 def advertise():
     # 1) Flags AD structure
     flags = b'\x02\x01\x06'
+    
     svc_uuid = bytes([len(UUID_LE) + 1, 0x07]) + UUID_LE
-    svc_data = bytes([len(UUID_LE) + len(MESSAGE) + 1, 0x21]) + UUID_LE + MESSAGE
-    ble.gap_advertise(100_000, flags + svc_uuid + svc_data)
+    adv_data = flags + svc_uuid
+    
+    scan_resp = bytes([len(MESSAGE) + 1, 0x09]) + MESSAGE
+    
+    
+    ble.gap_advertise(100_000, adv_data=adv_data, resp_data=scan_resp)
 
 while True:
     print(f"Advertising: {MESSAGE}")
