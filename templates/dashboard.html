@@ -1,18 +1,70 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if current_user.is_authenticated and current_user.is_employee %}
+
+<!-- Overskrift -->
 <div class="container">
     <div class="header" style="margin-top: 30px;">
-        <h1 style="text-align: center; margin-top: 10px;">EMPLOYEE DASHBOARD</h1>
+        <h1 style="text-align: center; margin-top: 10px;">Employee Dashboard</h1>
     </div>
 </div>
-{% else %}
-<div class="container">
-    <div class="header" style="margin-top: 30px;">
-        <h1 style="text-align: center;">403 - Forbidden</h1>
-        <h5 style="text-align: center; margin-top: 10px;">You do not have permission to access this page.</h5>
-    </div>
-</div>
-{% endif %}
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+
+<h2>Måneds Arbjedsplan</h2>
+
+<!-- Table -->
+<table class = "table"> 
+
+  <tr>
+    <th>Dato</th>
+    <th>Tid arbejdet</th>
+    <th>Overtid</th>
+  </tr>
+
+
+<!-- Arbejds timer -->
+  {% for entry in times %}
+  <tr>
+    <td>{{ entry['start_time'] }}</td>
+    <td>{{ entry['start_time'] }}</td>
+    <td>{{ entry['end_time'] }}</td>
+  </tr>
+
+  {% endfor %}
+</table>
+
+<table>
+  <tr>
+    <th>----</th>
+    <th>Total tid arbejdet</th>
+    <th>Total tid overarbejdet</th>
+  </tr>
+</table>
+</body>
+</html>
+
+
+
 {% endblock %}

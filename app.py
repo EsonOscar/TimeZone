@@ -1,17 +1,18 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_socketio import SocketIO, emit
+#from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.serving import WSGIRequestHandler
 from cryptography.fernet import Fernet
-from flask_cors import CORS
+#from flask_cors import CORS
 from functools import wraps
 from datetime import datetime, timezone, timedelta
 from time import sleep
 import sqlite3
+import json
 
-# Tell Flask to show the actual request IP in the log, instead of 127.0.0.1
+# Tell Flask to show the actual request IP in the log, instead of 127.0.0.1 (NGINX)
 # The request handler is used in the app.run() method
 class ProxiedRequestHandler(WSGIRequestHandler):
     def address_string(self):
@@ -21,7 +22,7 @@ class ProxiedRequestHandler(WSGIRequestHandler):
             return forwarded.split(',')[0].strip()
         return super().address_string()
 
-#Initialise the flask app, socketIO and CORS
+#Initialise the flask app and CORS
 app = Flask(__name__, static_folder="/home/eson/timezone_static", static_url_path="/static")
 app.secret_key = "super_duper_secret_key"
 
@@ -29,7 +30,10 @@ app.secret_key = "super_duper_secret_key"
 # The app is behind cloudflare, and a reverse proxy, so the third entry is the real client IP
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 #socketio = SocketIO(app)
-CORS(app)
+
+# CORS would be used to allow cross-origin requests, but it's not needed for this app,
+# since all HTML rendering and API requests are done from the same domain
+#CORS(app)
 
 #Inistialize the login manager
 login_manager = LoginManager()
@@ -134,7 +138,30 @@ def contact():
 @login_required
 def dashboard():
     if current_user.is_authenticated and current_user.is_employee:
-        return render_template('dashboard.html')
+        user = current_user.username
+
+        try: 
+            conn = db_connect()
+            times = conn.execute('''SELECT start_time, end_time FROM timeentries
+                         WHERE user = ?
+                         AND start_time >= DATE("now", "start of month")
+                         AND end_time IS NOT NULL
+                         AND machine IS NULL
+                         ORDER BY start_time ASC''', (user,)).fetchall()
+            #print(f"Times: {times}")
+            #times = list(times)
+
+            
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+
+
+        return render_template('dashboard.html', times=times)
     elif current_user.is_authenticated and current_user.is_org_admin:
         conn = db_connect()
         users = conn.execute("""SELECT name, lastname, email FROM users 
@@ -225,65 +252,56 @@ def user():
     else:
         return render_template('forbidden.html')
 
-#Dashboard
-@login_required
-@admin_required
-def orgdash():
-    # Opretter forbindelse til SQLite-databasen
-    conn = sqlite3.connect('TimeZone.db')
-    # Sørger for, at cursoren returnerer rækker som sqlite3
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # Henter raw sessions fra databasen, med TIMEDIFF
-    raw_sessions = cursor.execute("""
-        SELECT user, start_time, end_time, 
-               TIMEDIFF(end_time, start_time) AS varighed
-        FROM timeentries
-        ORDER BY start_time DESC
-    """).fetchall()
-
-    #Bygger en liste af sessions, hvor vi selv beregner varigheden
-    sessions = []
-    for s in raw_sessions:
-        check_in = datetime.fromisoformat(s['start_time'])
-        check_out = datetime.fromisoformat(s['end_time']) if s['end_time'] else None
-        # Beregn varighed: hvis brugeren stadig arbejder, skriv "Still working"
-        if check_out:
-            varighed = str(check_out - check_in)
-        else:
-            varighed = "Still working"
-        
-        sessions.append({  
-            'medarbejder': s['medarbejder'],
-            'check_in': s['check_in'],
-            'check_out': s['check_out'] or "N/A",
-            'varighed': varighed
-        })
- 
-    employees = [] 
-    for session in sessions:
-        employees.append(session['medarbejder'])
-          
-
-    # Lukker databaseforbindelsen
-    conn.close()
-
-    return render_template('orgadmin_dashboard.html', sessions=sessions, employees=employees)
-
 # TimeZone route
 # Employee time tracking and BLE scanning
 @app.route('/timezone')
 @login_required
 def time_zone():
-    return render_template('timezone.html')
+    if current_user.is_authenticated and current_user.is_employee:
+        try:
+            conn = db_connect()
+            # Get the list of machines from the database
+            machines = conn.execute("""SELECT id, name, uuid FROM machines
+                                    ORDER BY id""").fetchall()
+            # Get the list of active machines from the database
+            active_machines = conn.execute("""SELECT machine FROM timeentries
+                                            WHERE active = 1
+                                            AND MACHINE IS NOT NULL
+                                            ORDER BY id""").fetchall()
+            active_machines = [str(machine[0]) for machine in active_machines]
+            if len(active_machines) == 0:
+                active_machines = None
+            print(f"Active machines: {active_machines}")
+            conn.commit()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+        # Convert the machine data to a list of dictionaries
+        machines = [dict(machine) for machine in machines]
+        for machine in machines:
+            for entry in machine:
+                print(f"{entry}:{machine[entry]}")
+
+        print(f"Machines: {machines}")
+        return render_template('timezone.html', machines=machines, active_machines=active_machines)
+    elif current_user.is_authenticated and current_user.is_org_admin:
+
+        return render_template('timezone.html')
+    elif current_user.is_authenticated and current_user.is_sysadmin:
+
+        return render_template('timezone.html')
+    else:
+        return render_template('forbidden.html')
 
 #Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+
         try:
             conn = db_connect()
             row = conn.execute("""SELECT * FROM users 
@@ -296,10 +314,13 @@ def login():
         finally:
             conn.close()
 
+        pass_check = check_password_hash(row['password'], request.form.get('password', ''))
+        print(f"Password check: {pass_check}")
+
         if row['deleted_at'] is not None:
             flash('Your account has been deleted. Please contact support.', 'danger')
             return redirect(url_for('login'))
-        elif row and check_password_hash(row['password'], password):
+        elif row and pass_check:
             user = User(row)
             login_user(user)
             next_page = request.args.get('next') or url_for('index')
@@ -346,6 +367,170 @@ def serve_sw():
 
 ############################################# API ENDPOINTS BELOW ##############################################
 
+# API Route for changing the user password
+@app.route('/api/change_password', methods=['POST'])
+@login_required
+def change_password():
+    print(f"Change password API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    username = current_user.username
+
+    try:
+        conn = db_connect()
+        old_password = conn.execute("""SELECT password FROM users 
+                               WHERE username = ?
+                               """, (username,)).fetchone()
+        old_password = str(old_password[0])
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Invalid username or password.', 'danger')
+        return redirect(url_for('user'))
+    finally:
+        conn.close()
+
+    old_check = check_password_hash(old_password, request.form.get('oldPassword', ''))
+    new_password = generate_password_hash(request.form.get('newPassword', ''))
+    print(f"Old password check: {old_check}, Old password hash: {old_password}")
+
+    if not new_password:
+        flash('All fields are required.', 'danger')
+        print("All fields are required")
+        return redirect(url_for('user'))
+
+    if not old_check:
+        flash('Your old password was incorrect, please try again', 'warning')
+        print("All fields are required")
+        return redirect(url_for('user'))
+
+    
+    print(f"Old password check: {old_check}, New password hash: {new_password}")
+
+    try:
+        conn = db_connect()
+        conn.execute("""UPDATE users SET password = ? WHERE username = ?""", (new_password, username))
+        conn.commit()
+        flash('Password changed successfully.', 'success')
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('user'))
+    finally:
+        conn.close()
+
+    return redirect(url_for('user'))        
+
+# API Route for machine timestamp creation
+@app.route("/api/timezone_machine/", methods=["POST"])
+@login_required
+def timezone_machine_api():
+    print("Machine Timestamp API endpoint hit")
+    print(f"Requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    data = json.loads(request.data.decode('utf-8'))
+    uuid = data.get("uuid")
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+    print(f"UUID: {uuid}")
+    
+    # Check basic conditions, if the user is not an employee or if no UUID is provided
+    if current_user.role != "employee":
+        flash("Only \"Employee\" accounts can create machine timestamps", "danger")
+        return jsonify({ "success": False, "error": "Not permitted" }), 403
+    elif not uuid:
+        flash("No machine ID provided, please retry", "danger")
+        return jsonify({ "success": False, "error": "Missing UUID" }), 400
+    
+    # Get a list of all valid UUIDs from the database
+    try:
+        conn = db_connect()
+        uuid_list = conn.execute("SELECT uuid FROM machines ORDER BY id").fetchall()
+        uuid_list = [str(uuid[0]) for uuid in uuid_list]
+        print(uuid_list)
+        conn.commit()
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return jsonify({ "success": False, "error": "Database error" }), 400
+    finally:
+        conn.close()
+    
+    # Check if the provided UUID is in the list of valid UUIDs
+    if uuid not in uuid_list:
+        flash("Invalid machine ID provided, please contact support", "danger")
+        print(f"Invalid machine ID provided: {uuid}")
+        return jsonify({ "success": False, "error": "Invalid UUID" }), 400
+
+    # RECHECK LOGIC HERE SINCE THE ACTIVE COLUMN HAS BEEN ADDED TO THE TIMEENTRIES TABLE
+    # Check if machine already has a start time today
+    try:
+        conn = db_connect()
+        machine = conn.execute('SELECT name FROM machines WHERE uuid = ?', (uuid,)).fetchone()
+        conn.commit()
+        machine = str(machine[0])
+        print(f"Machine name: {machine}")
+        time_data = conn.execute('SELECT * FROM timeentries WHERE machine = ? AND DATE(start_time) = DATE(?) ORDER BY id DESC LIMIT 1', (machine, utc_dt)).fetchone()
+        conn.commit()
+        try:
+            time_data = dict(time_data)
+        except Exception as e:
+            print(f"Error converting time_data to dict: {e}")
+            print("Setting time_data to None")
+            time_data = None
+        print(f"Started? {time_data}")
+        # If the machine has no start time today, create a new entry
+        if not time_data:
+            conn.execute('INSERT INTO timeentries (user, machine, start_time) VALUES (?, ?, ?)',
+                         (current_user.username, machine, utc_dt))
+            conn.commit()
+            print(f"Start time created for machine: {machine} at {utc_dt}")
+        else:
+            # Check if the machine already has an end time today
+            ended = time_data.get("end_time")
+            print(f"Ended? {ended}")
+            # If the machine has no end time today, update entry with end time
+            if not ended:
+                conn.execute('UPDATE timeentries SET end_time = ? WHERE machine = ? AND DATE(start_time) = DATE(?) AND id = ?',
+                            (utc_dt, machine, utc_dt, time_data["id"]))
+                print(f"End time created for machine: {machine} at {utc_dt}")
+                conn.commit()
+            # If the machine has an end time today, create a new entry
+            else:
+                conn.execute('INSERT INTO timeentries (user, machine, start_time) VALUES (?, ?, ?)',
+                         (current_user.username, machine, utc_dt))
+                conn.commit()
+                print(f"Start time created for machine: {machine} at {utc_dt}")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return jsonify({ "success": False, "error": "Database error" }), 400
+    finally:
+        conn.close()
+
+    print("Reached the end of the function")
+    return jsonify({ "success": True }), 200
+    
+    
+
+# API Route for employee timestamp creation
+@app.route("/api/timezone_user/", methods=["POST"])
+@login_required
+def timezone_user_api():
+    print(f"User Timestamp API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    utc_dt = str(datetime.now(timezone.utc)+timedelta(hours=2))[:-13]
+    user = current_user.username
+
+    conn = db_connect()
+    try:
+        conn.execute('INSERT INTO timeentries (user, start_time) VALUES (?, ?)', (user, utc_dt))
+        conn.commit()
+        print(f"Timestamp created for user: {user} at {utc_dt}")
+        flash(f"Start Time created for user: {user} at {utc_dt}", "success")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+    finally:
+        conn.close()
+
+    return redirect(url_for('time_zone'))
+
 #Route for an admin to create a new user.
 #Data from the create user form, located in the admin.html template, is sent to this route.
 @app.route("/api/create_user", methods=["POST"])
@@ -356,7 +541,7 @@ def admin_create_user():
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        password = generate_password_hash(request.form.get("password", ""))
         name     = request.form.get("name", "").strip()
         lastname = request.form.get("lastname", "").strip()
         email    = request.form.get("email", "").strip()
@@ -381,7 +566,7 @@ def admin_create_user():
         conn = db_connect()
         try:
             conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, paytype, pay, utc_dt))
+                            (username, password, name, lastname, email, role, paytype, pay, utc_dt))
             conn.commit()
             print('User created successfully.', 'success')
             flash(f'User {username} created successfully.', 'success')
@@ -463,13 +648,13 @@ def update(user_id):
         print(f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
         print(f"The incident has been logged.\n")
 
-        # If the user is root, log them out
+        # If the active user is root, log them out
         if current_user.lastname == "root":
             logout_user()
             flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
             return redirect(url_for('login'))
         
-        # If the user is not root, teach them a lesson
+        # If the active user is not root, teach them a lesson
         try:
             conn = db_connect()
             conn.execute("""UPDATE users SET name = ?, lastname = ? WHERE id = ?""", ("FJOLS", "FJOLS" ,current_user.id))
@@ -516,7 +701,7 @@ def update(user_id):
 
 # API endpoint to delete a user (soft delete)
 # Only accessible by admins, both sysadmin and org admin (org admin can only delete employees)
-# Be careful with this one pls pls
+# Be careful with this one pls pls (don't do it Katrin)
 @app.route("/api/delete/<int:user_id>")
 @login_required
 @admin_required
@@ -576,7 +761,9 @@ def contactAPI():
     try:
         conn = db_connect() 
         try:
-            row = conn.execute("""SELECT * FROM contact WHERE email = ? AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" ORDER BY id DESC LIMIT 1""", (email, utc_dt)).fetchone()
+            row = conn.execute("""SELECT * FROM contact WHERE email = ? 
+                               AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" 
+                               ORDER BY id DESC LIMIT 1""", (email, utc_dt)).fetchone()
             row = dict(row)
             conn.commit()
         except Exception as e:

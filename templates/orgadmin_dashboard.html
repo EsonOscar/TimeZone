@@ -1,15 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <style>
-  /* non-active pills */
   #adminTabs .nav-link { background: #ffffff; color: #495057; }
-  /* override each active pill */
-  #tab-manage.active  { background: #0d6efd; color: #fff; }
-  #tab-create.active  { background: #0d6efd; color: #fff; }
-  #tab-edit.active    { background: #0d6efd; color: #fff; }
-  #tab-delete.active  { background: #dc3545; color: #fff; }
+  #tab-manage.active, #tab-create.active, #tab-edit.active {
+    background: #0d6efd; color: #fff;
+  }
 </style>
 
 <div class="container py-4">
@@ -18,120 +14,31 @@
       <h1 class="h3 mb-1">Org Control Panel</h1>
       <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
-    <div class="col">
-      {# Flash messages #}
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, msg in messages %}
-          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endwith %}
-    </div>
   </div>
-  
-  
-  <!-- Nav pills -->
+
+  <!-- Nav Tabs -->
   <ul class="nav nav-pills mb-4 mt-1" id="adminTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button
-        class="nav-link active"
-        id="tab-manage"
-        data-bs-toggle="pill"
-        data-bs-target="#pane-manage"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-people me-1"></i>
-        User List
+      <button class="nav-link active" id="tab-manage" data-bs-toggle="pill" data-bs-target="#pane-manage" type="button" role="tab">
+        <i class="bi bi-people me-1"></i>User List
       </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
-        id="tab-create"
-        data-bs-toggle="pill"
-        data-bs-target="#pane-create"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-person-plus me-1"></i>
-        Employee Schedule
+      <button class="nav-link" id="tab-create" data-bs-toggle="pill" data-bs-target="#pane-create" type="button" role="tab">
+        <i class="bi bi-person-plus me-1"></i>Employee Schedule
       </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
-        id="tab-edit"
-        data-bs-toggle="pill"
-        data-bs-target="#pane-edit"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-pencil-square"></i>
-        Overview of hours worked
-      </button>
-
-<!-- Include the JavaScript file for the calendar functionality -->
-	<script src="./script.js"></script>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link"
-        id="tab-delete"
-        data-bs-toggle="pill"
-        data-bs-target="#pane-delete"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-trash"></i>
-        Delete User
+      <button class="nav-link" id="tab-edit" data-bs-toggle="pill" data-bs-target="#pane-edit" type="button" role="tab">
+        <i class="bi bi-pencil-square"></i>Overview of hours worked
       </button>
     </li>
   </ul>
 
-
-      <!-- Tab Content Panes -->
-    <div
-    class="tab-pane fade"
-    id="pane-delete"
-    role="tabpanel"
-    aria-labelledby="tab-delete"
-    >
-    
-<!-- Delete User pane -->
   <div class="tab-content" id="adminTabsContent">
 
-      <div class="card shadow-sm p-4 mb-4">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Select a user to delete:</label>
-            <select id="userSelectDelete" class="form-select">
-              <option value="">- Select User -</option>
-              {% for u in users %}
-                <option value="{{ u.id }}">
-                  {{ u.name }} {{ u.lastname }}
-                </option>
-              {% endfor %}
-            </select>
-            <button id="btnDelete" type="submit" class="btn btn-danger" disabled>
-              Delete User
-            </button>
-          </div>
-        </div>
-      </div>
-  </div>
-  
-</div>    
-
-    <!-- Manage Users Pane -->
-    <div
-      class="tab-pane fade show active"
-      id="pane-manage"
-      role="tabpanel"
-      aria-labelledby="tab-manage"
-    >
+    <!-- User List Tab -->
+    <div class="tab-pane fade show active" id="pane-manage" role="tabpanel">
       <div class="card shadow-sm p-4">
         <table class="table table-striped mb-0">
           <thead>
@@ -141,54 +48,146 @@
           </thead>
           <tbody>
             {% for u in users %}
-            <tr>
-              <td>{{ u.name }}</td>
-              <td>{{ u.lastname }}</td>
-              <td>{{ u.email }}</td>
-              <td> TEST </td>
-            </tr>
+              <tr>
+                <td>{{ u.name }}</td>
+                <td>{{ u.lastname }}</td>
+                <td>{{ u.email }}</td>
+                <td>TEST</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Overview of hours worked Pane -->
-  <div class="tab-pane fade" id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
-    <!-- Calendar application -->
-	<div class="wrapper">
-		<div class="container-calendar">
-			<div id="left">
-				<div id="event-section">
-					<h3></h3>
-					<input type="date" id="eventDate">
-					<input type="text"
-						id="eventTitle"
-						placeholder="Event Title">
-					<input type="text"
-						id="eventDescription"
-						placeholder="Event Description">
-					<button id="addEvent" onclick="addEvent()">
-						Add
-					</button>
-				</div>
-				<div id="reminder-section">
-					<h3>Overview</h3>
+    <!-- Overview Tab -->
+    <div class="tab-pane fade" id="pane-edit" role="tabpanel">
+      <div class="card shadow-sm p-4 mb-4">
 
-<!-- JS for searchable dropdown menus -->
+        <!-- User Selection -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="userSelectOverview" class="form-label">Select User:</label>
+            <select id="userSelectOverview" class="form-select">
+              <option value="">- Select User -</option>
+              <option value="all">All Users</option>
+              {% for u in users %}
+                <option value="{{ u.id }}">{{ u.name }} {{ u.lastname }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Date Picker Section (Always Shown) -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="dateFrom" class="form-label">From:</label>
+            <input type="date" id="dateFrom" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label for="dateTo" class="form-label">To:</label>
+            <input type="date" id="dateTo" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRange" class="btn btn-primary w-100">Filter Hours</button>
+          </div>
+        </div>
+
+        <!-- Result Summary -->
+        <div id="currentMonthResult" class="fw-bold mt-3"></div>
+
+        <!-- Table of Work Records -->
+        <div class="table-responsive mt-3">
+          <table class="table table-striped-columns" id="workRecordsTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Hours Worked</th>
+                <th>Overtime hours</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Schedule Tab -->
+    <div class="tab-pane fade" id="pane-create" role="tabpanel">
+      <div class="card shadow-sm p-4">Schedule content goes here.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- JavaScript -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new Choices('#userSelectDelete', {
-      searchEnabled: true,
-      shouldSort: false,
-      itemSelectText: ''
+    const workData = [
+      { userId: 1, name: 'oscar', lastname: 'lugter', date: '2025-05-01', hours: 8 },
+      { userId: 1, name: 'Bent', lastname: 'Over', date: '2025-05-10', hours: 6 },
+      { userId: 1, name: 'Deez', lastname: 'Nuts', date: '2025-05-21', hours: 4 },
+      { userId: 2, name: 'Imap', lastname: 'Ussay', date: '2025-05-05', hours: 7 },
+      { userId: 2, name: 'Grab', lastname: 'Cock', date: '2025-05-20', hours: 5 },
+      { userId: 3, name: 'gylpe', lastname: 'Gylp', date: '2025-04-18', hours: 9 }
+    ];
+
+    const userSelect = document.getElementById('userSelectOverview');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    const searchBtn = document.getElementById('searchRange');
+    const resultBox = document.getElementById('currentMonthResult');
+    const tableBody = document.querySelector('#workRecordsTable tbody');
+
+    function isValidDate(d) {
+      return d instanceof Date && !isNaN(d);
+    }
+
+    searchBtn.addEventListener('click', () => {
+      const selectedValue = userSelect.value;
+      const from = new Date(dateFrom.value);
+      const to = new Date(dateTo.value);
+      resultBox.textContent = '';
+      tableBody.innerHTML = '';
+
+      if (!selectedValue || !isValidDate(from) || !isValidDate(to)) {
+        resultBox.textContent = "Please select a user and valid date range.";
+        return;
+      }
+
+      let results = [];
+      if (selectedValue === 'all') {
+        results = workData.filter(entry => {
+          const entryDate = new Date(entry.date);
+          return entryDate >= from && entryDate <= to;
+        });
+      } else {
+        const userId = parseInt(selectedValue);
+        results = workData.filter(entry => {
+          const entryDate = new Date(entry.date);
+          return entry.userId === userId && entryDate >= from && entryDate <= to;
+        });
+      }
+
+      if (results.length > 0) {
+        let total = 0;
+        results.forEach(entry => {
+          total += entry.hours;
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${entry.name} ${entry.lastname}</td>
+            <td>${entry.date}</td>
+            <td>${entry.hours}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+        resultBox.textContent = `Total hours from ${dateFrom.value} to ${dateTo.value}: ${total} hours`;
+      } else {
+        resultBox.textContent = "No records found in selected range.";
+      }
     });
   });
 </script>
-			
-			<table class="table-calendar"
-				id="calendar"
-				data-lang="en">
-				<thead id="thead-month"></thead>
-    
-  {% endblock %}
+{% endblock %}

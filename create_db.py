@@ -35,12 +35,13 @@ c.execute("""CREATE TABLE IF NOT EXISTS machines (
 
 # TIMEENTRIES TABLE
 # start_time and end_time should be in ISO 8601 format (YYYY-MM-DDTHH:MM:SS+00:00)
-c.execute("""CREATE TABLE IF NOT EXISTS timeentries (
+c.execute("""CREATE TABLE IF NOT EXISTS timeentries_new (
         id          INTEGER PRIMARY KEY AUTOINCREMENT, 
         user        TEXT,
         machine     TEXT,
         start_time  TEXT    NOT NULL,
-        end_time    TEXT    NOT NULL,
+        end_time    TEXT,
+        active      INTEGER GENERATED ALWAYS AS (end_time IS NULL) STORED,
         FOREIGN KEY(user) REFERENCES users(username),
         FOREIGN KEY(machine) REFERENCES machines(name)
         );
@@ -61,10 +62,10 @@ c.execute("""CREATE TABLE IF NOT EXISTS service (
 
 password_hash = generate_password_hash("cvnVDMLY!")
 
-c.execute("""INSERT INTO users (username, password, name, email, role) VALUES (?, ?, ?, ?, ?)""",
-("sysadmin", password_hash, "SysAdmin", "sysadmin@hvalfangerne.com", "sysadmin"))
+#c.execute("""INSERT INTO users (username, password, name, email, role) VALUES (?, ?, ?, ?, ?)""",
+#("sysadmin", password_hash, "SysAdmin", "sysadmin@hvalfangerne.com", "sysadmin"))
 
 conn.commit()
 conn.close()
 print("Users, machines, timeentries and service tables created")
-print("SysAdmin user created.")
+#print("SysAdmin user created.")

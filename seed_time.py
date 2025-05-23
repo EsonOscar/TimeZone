@@ -19,11 +19,11 @@ def seed_data():
     utc_dt6 = "2025-04-16 15:36:16"
 
     conn.execute("""INSERT INTO timeentries (user, start_time, end_time)
-                   VALUES (?, ?, ?)""", ("Svensker", utc_dt, utc_dt2))
+                   VALUES (?, ?, ?)""", ("employee", utc_dt, utc_dt2))
     conn.execute("""INSERT INTO timeentries (user, start_time, end_time)
-                   VALUES (?, ?, ?)""", ("Svensker", utc_dt3, utc_dt4))
+                   VALUES (?, ?, ?)""", ("employee", utc_dt3, utc_dt4))
     conn.execute("""INSERT INTO timeentries (user, start_time, end_time)
-                   VALUES (?, ?, ?)""", ("Svensker", utc_dt5, utc_dt6))
+                   VALUES (?, ?, ?)""", ("employee", utc_dt5, utc_dt6))
 
     conn.commit()
     conn.close()
