@@ -138,7 +138,25 @@ def contact():
 @login_required
 def dashboard():
     if current_user.is_authenticated and current_user.is_employee:
-        return render_template('dashboard.html')
+        user = current_user.username
+
+        try: 
+            conn = db_connect()
+            times = conn.execute('''SELECT start_time, end_time FROM timeentries
+                         WHERE user = ?
+                         AND start_time >= DATE("now", "start of month")
+                         AND end_time IS NOT NULL
+                         ORDER BY start_time ASC''', (user,)).fetchall()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+
+
+
+        return render_template('dashboard.html', times=times)
     elif current_user.is_authenticated and current_user.is_org_admin:
         conn = db_connect()
         users = conn.execute("""SELECT name, lastname, email FROM users 
@@ -229,52 +247,6 @@ def user():
     else:
         return render_template('forbidden.html')
 
-#Dashboard
-@login_required
-@admin_required
-def orgdash():
-    # Opretter forbindelse til SQLite-databasen
-    conn = sqlite3.connect('TimeZone.db')
-    # Sørger for, at cursoren returnerer rækker som sqlite3
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # Henter raw sessions fra databasen, med TIMEDIFF
-    raw_sessions = cursor.execute("""
-        SELECT user, start_time, end_time, 
-        TIMEDIFF(end_time, start_time) AS varighed
-        FROM timeentries
-        ORDER BY start_time DESC
-    """).fetchall()
-
-    #Bygger en liste af sessions, hvor vi selv beregner varigheden
-    sessions = []
-    for s in raw_sessions:
-        check_in = datetime.fromisoformat(s['start_time'])
-        check_out = datetime.fromisoformat(s['end_time']) if s['end_time'] else None
-        # Beregn varighed: hvis brugeren stadig arbejder, skriv "Still working"
-        if check_out:
-            varighed = str(check_out - check_in)
-        else:
-            varighed = "Still working"
-        
-        sessions.append({  
-            'medarbejder': s['medarbejder'],
-            'check_in': s['check_in'],
-            'check_out': s['check_out'] or "N/A",
-            'varighed': varighed
-        })
- 
-    employees = [] 
-    for session in sessions:
-        employees.append(session['medarbejder'])
-          
-
-    # Lukker databaseforbindelsen
-    conn.close()
-
-    return render_template('orgadmin_dashboard.html', sessions=sessions, employees=employees)
-
 # TimeZone route
 # Employee time tracking and BLE scanning
 @app.route('/timezone')
@@ -338,6 +310,7 @@ def login():
             conn.close()
 
         pass_check = check_password_hash(row['password'], request.form.get('password', ''))
+        print(f"Password check: {pass_check}")
 
         if row['deleted_at'] is not None:
             flash('Your account has been deleted. Please contact support.', 'danger')
@@ -394,12 +367,15 @@ def serve_sw():
 @login_required
 def change_password():
     print(f"Change password API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    username = current_user.username
 
     try:
         conn = db_connect()
-        row = conn.execute("""SELECT * FROM users 
+        old_password = conn.execute("""SELECT password FROM users 
                                WHERE username = ?
                                """, (username,)).fetchone()
+        old_password = str(old_password[0])
     except Exception as e:
         print(f"Database error: {e}")
         flash('Invalid username or password.', 'danger')
@@ -407,17 +383,34 @@ def change_password():
     finally:
         conn.close()
 
-    old_check = check_password_hash(row['password'], request.form.get('password', ''))
-    #new_password = request.form.get('newPassword', '')
-    #confirm_password = request.form.get('confirmPassword', '')
+    old_check = check_password_hash(old_password, request.form.get('oldPassword', ''))
+    new_password = generate_password_hash(request.form.get('newPassword', ''))
+    print(f"Old password check: {old_check}, Old password hash: {old_password}")
 
-
-    if not old_password or not new_password or not confirm_password:
-        flash('All fields are required.', 'wasning')
+    if not new_password:
+        flash('All fields are required.', 'danger')
         print("All fields are required")
-        return jsonify({"success": False, "error": "All fields are required"}), 400
+        return redirect(url_for('user'))
+
+    if not old_check:
+        flash('Your old password was incorrect, please try again', 'warning')
+        print("All fields are required")
+        return redirect(url_for('user'))
+
     
-    print(f"Old password: {old_check}, New password: {new_password}, Confirm password: {confirm_password}")
+    print(f"Old password check: {old_check}, New password hash: {new_password}")
+
+    try:
+        conn = db_connect()
+        conn.execute("""UPDATE users SET password = ? WHERE username = ?""", (new_password, username))
+        conn.commit()
+        flash('Password changed successfully.', 'success')
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('user'))
+    finally:
+        conn.close()
 
     return redirect(url_for('user'))        
 

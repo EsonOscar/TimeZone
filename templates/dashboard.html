@@ -34,17 +34,8 @@ tr:nth-child(even) {
 
 <h2>Måneds Arbjedsplan</h2>
 
-<!-- Select User -->
-{% for u in users %}
-<tr>
-  <td>{{ u.name }}</td>
-  <td>{{ u.lastname }}</td>
-  <td>{{ u.email }}</td>
-  <td>{{ u.role.replace('_',' ') }}</td>
-  <td>{{ u.created_at }}</td>
-</tr>
+<!-- Arbejds timer -->
 
-{% endfor %}
 
 <!-- Table -->
 <table class = "table"> 
@@ -54,47 +45,6 @@ tr:nth-child(even) {
     <th>Tid arbejdet</th>
     <th>Overtid</th>
 
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-    <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-    <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
 </table>
 
 <table>
@@ -102,22 +52,6 @@ tr:nth-child(even) {
     <th>----</th>
     <th>Total tid arbejdet</th>
     <th>Total tid overarbejdet</th>
-
-   <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-   <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
 
 </table>
 
