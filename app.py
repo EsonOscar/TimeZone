@@ -324,7 +324,7 @@ def time_zone():
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+
         try:
             conn = db_connect()
             row = conn.execute("""SELECT * FROM users 
@@ -337,10 +337,12 @@ def login():
         finally:
             conn.close()
 
+        pass_check = check_password_hash(row['password'], request.form.get('password', ''))
+
         if row['deleted_at'] is not None:
             flash('Your account has been deleted. Please contact support.', 'danger')
             return redirect(url_for('login'))
-        elif row and check_password_hash(row['password'], password):
+        elif row and pass_check:
             user = User(row)
             login_user(user)
             next_page = request.args.get('next') or url_for('index')
@@ -386,6 +388,38 @@ def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 ############################################# API ENDPOINTS BELOW ##############################################
+
+# API Route for changing the user password
+@app.route('/api/change_password', methods=['POST'])
+@login_required
+def change_password():
+    print(f"Change password API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    try:
+        conn = db_connect()
+        row = conn.execute("""SELECT * FROM users 
+                               WHERE username = ?
+                               """, (username,)).fetchone()
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Invalid username or password.', 'danger')
+        return redirect(url_for('user'))
+    finally:
+        conn.close()
+
+    old_check = check_password_hash(row['password'], request.form.get('password', ''))
+    #new_password = request.form.get('newPassword', '')
+    #confirm_password = request.form.get('confirmPassword', '')
+
+
+    if not old_password or not new_password or not confirm_password:
+        flash('All fields are required.', 'wasning')
+        print("All fields are required")
+        return jsonify({"success": False, "error": "All fields are required"}), 400
+    
+    print(f"Old password: {old_check}, New password: {new_password}, Confirm password: {confirm_password}")
+
+    return redirect(url_for('user'))        
 
 # API Route for machine timestamp creation
 @app.route("/api/timezone_machine/", methods=["POST"])
@@ -509,7 +543,7 @@ def admin_create_user():
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        password = generate_password_hash(request.form.get("password", ""))
         name     = request.form.get("name", "").strip()
         lastname = request.form.get("lastname", "").strip()
         email    = request.form.get("email", "").strip()
@@ -534,7 +568,7 @@ def admin_create_user():
         conn = db_connect()
         try:
             conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, paytype, pay, utc_dt))
+                            (username, password, name, lastname, email, role, paytype, pay, utc_dt))
             conn.commit()
             print('User created successfully.', 'success')
             flash(f'User {username} created successfully.', 'success')
