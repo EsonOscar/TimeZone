@@ -176,8 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
   empBtn.disabled = true;
 
   function updateEmpButton() {
-    const f = empFrom.value, t = empTo.value, u = empUser.value;
+    const f = empFrom.value
+    const t = empTo.value
+    const u = empUser.value;
     empBtn.disabled = !(u && f && t && new Date(t) > new Date(f));
+    console.log(`empUser: ${u}, empFrom: ${f}, empTo: ${t}, disabled: ${empBtn.disabled}`);
   }
 
   empUser.addEventListener('change', updateEmpButton);
@@ -215,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Error loading data — see console for details.');
     }
   });
+
 });
 </script>
 

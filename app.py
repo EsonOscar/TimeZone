@@ -192,7 +192,7 @@ def dashboard():
         try:
             conn = db_connect()
             # Add back later: AND lastname != "root"
-            users = conn.execute("""SELECT username, name, lastname FROM users 
+            users = conn.execute("""SELECT id, username, name, lastname FROM users 
                                 WHERE role = "employee"                               
                                 AND deleted_at IS NULL
                                 ORDER BY name ASC""").fetchall()
@@ -397,20 +397,12 @@ def get_times():
     user = request.args.get('userId')
 
     print(f"From date: {from_date_gen}, To date: {to_date_gen}")
+    print(f"From date employee: {from_date_emp}, To date employee: {to_date_emp}")
+    print(f"User: {user}")
 
-    if (not from_date_gen or not to_date_gen) or (not from_date_emp or not to_date_emp):
-        flash('Both date fields are required.', 'danger')
-        print("Both date fields are required")
-        return redirect(url_for('dashboard'))
-    elif from_date_gen > to_date_gen:
-        flash('The "From" date cannot be later than the "To" date.', 'danger')
-        print("The \"From\" date cannot be later than the \"To\" date.")
-        return redirect(url_for('dashboard'))
-    elif from_date_gen == to_date_gen:
-        flash('The "From" date cannot be the same as the "To" date.', 'danger')
-        print("The \"From\" date cannot be the same as the \"To\" date.")
-        return redirect(url_for('dashboard'))
-    elif from_date_gen and to_date_gen and not user:
+    # THIS WORKS FOR NOW, BUT IMPLEMENT LOGIC FOR CHECKING IF DATES ARE SUPPLIED AND VALID
+
+    if from_date_gen and to_date_gen and not user:
         try:
             conn = db_connect()
             users = conn.execute("""SELECT username, name, lastname FROM users 
@@ -449,27 +441,23 @@ def get_times():
     elif user:
         try: 
             conn = db_connect()
+            user = conn.execute('SELECT username, name, lastname FROM users WHERE id = ?', (user,)).fetchone()
+            user = dict(user)
             times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
                          CASE 
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
                          END AS overtime
-                         TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
-                         TIME(SUM(CASE
-                            WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                            THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                            ELSE 0
-                            END), "unixepoch") AS total_overtime
                          FROM timeentries
                          WHERE user = ?
-                         WHERE DATE(start_time) BETWEEN ? AND ?
+                         AND DATE(start_time) BETWEEN ? AND ?
                          AND end_time IS NOT NULL
                          AND machine IS NULL
-                         ORDER BY start_time ASC''', (user, from_date_emp, to_date_emp)).fetchall()
-            user = conn.execute('SELECT name, lastname FROM users WHERE id = ?', (user,)).fetchone()
+                         ORDER BY start_time ASC''', (user["username"], from_date_emp, to_date_emp)).fetchall()
+            
             conn.commit()
             times = [dict(time) for time in times]
-            user = dict(user)
+            print(f"Times fetched for user {user['name']} {user['lastname']}: {times}")
         except Exception as e:
             print(f"Database error: {e}")
             flash('Database error, please contact support', 'danger')
@@ -478,7 +466,7 @@ def get_times():
             conn.close()
 
         for time in times:
-            time["duration"] = time["duration"][:-4][12:]
+            time["worked"] = time["worked"][:-4][12:]
             time["overtime"] = time["overtime"][:-4][12:]
             time["user"] = user["name"] + " " + user["lastname"]
 
@@ -490,6 +478,8 @@ def get_times():
         return redirect(url_for('dashboard'))
 
     return jsonify(times), 200
+
+
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
 @login_required
