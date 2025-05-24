@@ -39,18 +39,32 @@
     <div class="tab-pane fade show active" id="pane-general" role="tabpanel">
       <div class="card shadow-sm p-4">
         <div class="row g-3 mb-3">
+          <h4>Overview of all employee work times</h4>
+          <p>To show employee work times, please define a start date and an end date below: </p>
           <div class="col-md-4">
-            <label for="dateFrom" class="form-label">From:</label>
+            <label for="dateFromGeneral" class="form-label">From:</label>
             <input type="date" id="dateFromGeneral" class="form-control">
           </div>
           <div class="col-md-4">
             <label for="dateToGeneral" class="form-label">To:</label>
-            <input type="date" id="dateTo" class="form-control">
+            <input type="date" id="dateToGeneral" class="form-control">
           </div>
           <div class="col-md-4 d-flex align-items-end">
-            <button id="searchRangeGeneral" class="btn btn-primary w-100">Filter Hours</button>
+            <button id="searchRangeGeneral" class="btn btn-primary w-100" disabled>Filter Hours</button>
           </div>
         </div>
+      </div>
+      <div class="card shadow-sm p-4 mt-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Name</th><th>Hours Worked</th><th>Overtime Hours Worked</th>
+            </tr>
+          </thead>
+          <tbody id="generalOverviewTable">
+            <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -71,20 +85,71 @@
         </div>
         <div class="row g-3 mb-3">
           <div class="col-md-4">
-            <label for="dateFrom" class="form-label">From:</label>
+            <label for="dateFromEmployee" class="form-label">From:</label>
             <input type="date" id="dateFromEmployee" class="form-control">
           </div>
           <div class="col-md-4">
-            <label for="dateTo" class="form-label">To:</label>
+            <label for="dateToEmployee" class="form-label">To:</label>
             <input type="date" id="dateToEmployee" class="form-control">
           </div>
           <div class="col-md-4 d-flex align-items-end">
-            <button id="searchRange" class="btn btn-primary w-100">Filter Hours</button>
+            <button id="searchRangeEmployee" class="btn btn-primary w-100">Filter Hours</button>
           </div>
         </div>
       </div>
     </div>
    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn   = document.getElementById('searchRangeGeneral');
+  const tbody = document.getElementById('generalOverviewTable');
+  const fromDate = document.getElementById('dateFromGeneral');
+  const toDate   = document.getElementById('dateToGeneral');
+
+  btn.disabled = true;
+
+  function updateButtonState() {
+    const from = fromDate.value;
+    const to   = toDate.value;
+    // enable only when both set and to>from
+    btn.disabled = !(from && to && new Date(to) > new Date(from));
+  }
+
+  fromDate.addEventListener('input', updateButtonState);
+  toDate.addEventListener('input',   updateButtonState);
+
+  btn.addEventListener('click', async e => {
+    e.preventDefault();  // don’t reload the page
+
+    
+    const qs   = new URLSearchParams({ dateFromGeneral: fromDate.value, dateToGeneral: toDate.value });
+
+    try {
+      const res  = await fetch(`/api/times?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+
+      // clear old rows
+      tbody.innerHTML = '';
+
+      // populate with new data
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.user}</td>
+          <td>${r.total_worked}</td>
+          <td>${r.total_overtime}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+});
+</script>
 
 {% endblock %}

@@ -216,10 +216,10 @@ def dashboard():
         users = [dict(user) for user in users]
         times = [dict(time) for time in times]
 
-        print("#################################################")
-        print(f"Times: {times}")
-        print(f"Users: {users}")
-        print("#################################################")
+        #print("#################################################")
+        #print(f"Times: {times}")
+        #print(f"Users: {users}")
+        #print("#################################################")
 
         for time in times:
             for user in users:
@@ -231,9 +231,9 @@ def dashboard():
                 time["duration"] = time["duration"][:-4][12:]
                 time["overtime"] = time["overtime"][:-4][12:]
             
-        print("#################################################")
-        print(f"Times: {times}")
-        print("#################################################")
+        #print("#################################################")
+        #print(f"Times: {times}")
+        #print("#################################################")
 
 
         return render_template("orgadmin_dashboardV2.html", times=times, users=users)
@@ -386,7 +386,7 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-
+# Doesn't work, cloudflare doesn't allow you to serve a robots.txt file from the root directory
 """
 @app.route('/robots.txt')
 def robots():
@@ -397,7 +397,7 @@ def robots():
     return resp
 """
 # Favicon
-# For the app
+# Happy lil whale for the app
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.static_url_path,'happy_logo.png', mimetype='image/vnd.microsoft.icon')
@@ -420,12 +420,64 @@ def serve_sw():
 @login_required
 @admin_required
 def get_times():
-    user_id = request.args.get('id', '').strip()
+    print(f"Times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    from_date_gen = request.args.get('dateFromGeneral')
+    to_date_gen = request.args.get('dateToGeneral')
 
-    if not user_id:
-        start = request.args.get('dateFromGeneral', '')
-        end = request.args.get('dateToGeneral', '')
+    print(f"From date: {from_date_gen}, To date: {to_date_gen}")
 
+    if not from_date_gen or not to_date_gen:
+        flash('Both date fields are required.', 'danger')
+        print("Both date fields are required")
+        return redirect(url_for('dashboard'))
+    elif from_date_gen > to_date_gen:
+        flash('The "From" date cannot be later than the "To" date.', 'danger')
+        print("The \"From\" date cannot be later than the \"To\" date.")
+        return redirect(url_for('dashboard'))
+    elif from_date_gen == to_date_gen:
+        flash('The "From" date cannot be the same as the "To" date.', 'danger')
+        print("The \"From\" date cannot be the same as the \"To\" date.")
+        return redirect(url_for('dashboard'))
+    elif from_date_gen and to_date_gen:
+        try:
+            conn = db_connect()
+            users = conn.execute("""SELECT username, name, lastname FROM users 
+                                WHERE role = "employee"                               
+                                AND deleted_at IS NULL
+                                ORDER BY name ASC""").fetchall()
+            times = conn.execute("""SELECT user,
+                                        TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime
+                                        FROM timeentries
+                                        WHERE DATE(start_time) BETWEEN ? AND ?
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user
+                                        ORDER BY user""", (from_date_gen, to_date_gen)).fetchall()
+            conn.commit()
+            times = [dict(time) for time in times]
+            
+            for user in users:
+                for time in times:
+                    if user["username"] == time["user"]:
+                        time["user"] = user["name"] + " " + user["lastname"]
+                        break
+             
+            print(f"Times fetched: {times}")
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('dashboard'))
+        finally:
+            conn.close()
+    
+
+    return jsonify(times), 200
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
 @login_required
