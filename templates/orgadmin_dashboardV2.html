@@ -67,7 +67,6 @@
         </table>
       </div>
     </div>
-
   <!-- Employess Specific Overview Tab -->
     <div class="tab-pane fade" id="pane-employee" role="tabpanel">
       <div class="card shadow-sm p-4">
@@ -93,38 +92,52 @@
             <input type="date" id="dateToEmployee" class="form-control">
           </div>
           <div class="col-md-4 d-flex align-items-end">
-            <button id="searchRangeEmployee" class="btn btn-primary w-100">Filter Hours</button>
+            <button id="searchRangeEmployee" class="btn btn-primary w-100" disabled>Filter Hours</button>
           </div>
         </div>
       </div>
+      <div class="card shadow-sm p-4 mt-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime Hours Worked</th>
+            </tr>
+          </thead>
+          <tbody id="employeeOverviewTable">
+            <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
+      </div>
     </div>
-   </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const btn   = document.getElementById('searchRangeGeneral');
-  const tbody = document.getElementById('generalOverviewTable');
-  const fromDate = document.getElementById('dateFromGeneral');
-  const toDate   = document.getElementById('dateToGeneral');
+  const genBtn     = document.getElementById('searchRangeGeneral');
+  const genFrom    = document.getElementById('dateFromGeneral');
+  const genTo      = document.getElementById('dateToGeneral');
+  const genTbody   = document.getElementById('generalOverviewTable');
 
-  btn.disabled = true;
+  genFrom.value = '';
+  genTo.value   = '';
 
-  function updateButtonState() {
-    const from = fromDate.value;
-    const to   = toDate.value;
-    // enable only when both set and to>from
-    btn.disabled = !(from && to && new Date(to) > new Date(from));
+  genBtn.disabled = true;
+
+  function updateGenButton() {
+    const f = genFrom.value
+    const t = genTo.value;
+    genBtn.disabled = !(f && t && new Date(t) > new Date(f));
   }
+  genFrom.addEventListener('input', updateGenButton);
+  genTo.addEventListener('input',   updateGenButton);
+  updateGenButton();
 
-  fromDate.addEventListener('input', updateButtonState);
-  toDate.addEventListener('input',   updateButtonState);
-
-  btn.addEventListener('click', async e => {
-    e.preventDefault();  // don’t reload the page
+  genBtn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy, remember this for later, also maybe fix all your old crap where you don't have it since it took you two weeks to find it >:|
+    e.preventDefault();  
 
     
-    const qs   = new URLSearchParams({ dateFromGeneral: fromDate.value, dateToGeneral: toDate.value });
+    const qs   = new URLSearchParams({ dateFromGeneral: genFrom.value, dateToGeneral: genTo.value });
 
     try {
       const res  = await fetch(`/api/times?${qs.toString()}`, { method: 'GET' });
@@ -132,9 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       // clear old rows
-      tbody.innerHTML = '';
+      genTbody.innerHTML = '';
 
-      // populate with new data
+      // populate with new cool data
       data.forEach(r => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -142,7 +155,60 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${r.total_worked}</td>
           <td>${r.total_overtime}</td>
         `;
-        tbody.appendChild(tr);
+        genTbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+
+  const empBtn      = document.getElementById('searchRangeEmployee');
+  const empFrom     = document.getElementById('dateFromEmployee');
+  const empTo       = document.getElementById('dateToEmployee');
+  const empUser     = document.getElementById('userSelectOverview');
+  const empTbody    = document.getElementById('employeeOverviewTable');
+
+  empFrom.value = '';
+  empTo.value   = '';
+  empUser.value = '';
+
+  empBtn.disabled = true;
+
+  function updateEmpButton() {
+    const f = empFrom.value, t = empTo.value, u = empUser.value;
+    empBtn.disabled = !(u && f && t && new Date(t) > new Date(f));
+  }
+
+  empUser.addEventListener('change', updateEmpButton);
+  empFrom.addEventListener('input',  updateEmpButton);
+  empTo.addEventListener('input',    updateEmpButton);
+  updateEmpButton();
+
+  empBtn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy
+    e.preventDefault();  
+    
+    const qs   = new URLSearchParams({ dateFromEmployee: empFrom.value, dateToEmployee: empTo.value, userId: empUser.value });
+
+    try {
+      const res  = await fetch(`/api/times?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+
+      // clear old rows
+      empTbody.innerHTML = '';
+
+      // populate with new cool data
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.start_time}</td>
+          <td>${r.end_time}</td>
+          <td>${r.worked}</td>
+          <td>${r.overtime}</td>
+        `;
+        empTbody.appendChild(tr);
       });
     } catch (err) {
       console.error('Failed to load overview:', err);
