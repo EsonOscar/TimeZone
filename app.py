@@ -147,6 +147,7 @@ def contact():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # REMOVE LOGIC ONCE API IS SET UP
     if current_user.is_authenticated and current_user.is_employee:
         user = current_user.username
 
@@ -186,7 +187,6 @@ def dashboard():
 
         return render_template('dashboard.html', times=times)
     
-    # REMOVE LOGIC ONECE API IS SET UP
     elif current_user.is_authenticated and current_user.is_org_admin:
 
         try:
@@ -196,16 +196,6 @@ def dashboard():
                                 WHERE role = "employee"                               
                                 AND deleted_at IS NULL
                                 ORDER BY name ASC""").fetchall()
-            
-            times = conn.execute('''SELECT user, start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
-                                CASE 
-                                    WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
-                                    THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
-                                END AS overtime
-                                FROM timeentries
-                                WHERE end_time IS NOT NULL
-                                AND machine IS NULL
-                                ORDER BY start_time ASC''').fetchall()
         except Exception as e:
             print(f"Database error: {e}")
             flash('Database error, please contact support', 'danger')
@@ -213,30 +203,7 @@ def dashboard():
         finally:
             conn.close()
 
-        users = [dict(user) for user in users]
-        times = [dict(time) for time in times]
-
-        #print("#################################################")
-        #print(f"Times: {times}")
-        #print(f"Users: {users}")
-        #print("#################################################")
-
-        for time in times:
-            for user in users:
-                if time["user"] == user["username"]:
-                    time["user"] = user["name"] + " " + user["lastname"]
-                    break
-        
-        for time in times:
-                time["duration"] = time["duration"][:-4][12:]
-                time["overtime"] = time["overtime"][:-4][12:]
-            
-        #print("#################################################")
-        #print(f"Times: {times}")
-        #print("#################################################")
-
-
-        return render_template("orgadmin_dashboardV2.html", times=times, users=users)
+        return render_template("orgadmin_dashboardV2.html", users=users)
     elif current_user.is_authenticated and current_user.is_sysadmin:
         return render_template('sysadmin_dashboard.html')
     else:
