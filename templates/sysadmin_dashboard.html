@@ -1,18 +1,238 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if current_user.is_authenticated and current_user.is_sysadmin %}
-<div class="container">
-    <div class="header" style="margin-top: 30px;">
-        <h1 style="text-align: center; margin-top: 10px;">SYSADMIN DASHBOARD PLACEHOLDER</h1>
+<!-- Flash messages and header -->
+<div class="container py-4">
+  <div class="row">
+    <div class="col">
+      <h1 class="h3 mb-1">SysAdmin Dashboard</h1>
+      <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
-</div>
-{% else %}
-<div class="container">
-    <div class="header" style="margin-top: 30px;">
-        <h1 style="text-align: center;">403 - Forbidden</h1>
-        <h5 style="text-align: center; margin-top: 10px;">You do not have permission to access this page.</h5>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
     </div>
-</div>
-{% endif %}
+  </div>
+
+    <!-- Nav Tabs -->
+  <ul class="nav nav-pills mb-4 mt-1" id="dashTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-unread" data-bs-toggle="pill" data-bs-target="#pane-unread" type="button" role="tab">
+        <i class="bi bi-envelope-exclamation"></i> Unread Messages
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-read" data-bs-toggle="pill" data-bs-target="#pane-read" type="button" role="tab">
+        <i class="bi bi-envelope-open"></i> Read Messages
+      </button>
+    </li>
+  </ul>
+
+  <!-- Unread Messages Tab-->
+  <div class="tab-content" id="empTabsContent">
+    <div class="tab-pane fade show active" id="pane-unread" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <h4>Unread Messages</h4>
+                <p>Below you can find all currently unread messages sent via the contact form:</p>
+                <th>Timestamp</th><th>Email</th><th>Message</th><th>IP Address</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for msg in messages %}
+              <tr>
+                <td>{{ msg.timestamp }}</td>
+                <td>{{ msg.email }}</td>
+                <td>{{ msg.message }}</td>
+                <td>{{ msg.ip }}</td>
+                <td>
+                    <form class="mark-read-form" action="{{ url_for('mark_message_read', msg_id=msg.id) }}" method="POST">
+                        <button type="submit" class="btn btn-success btn-sm">Read</button>
+                    </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Read Messages Tab -->
+    <div class="tab-pane fade" id="pane-read" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <div class="row g-3 mb-3">
+            <h4>Read Messages</h4>
+            <p>Please enter a date range to show already read messages sent within that time period, or click load all:</p>
+            <div class="col-md-4">
+              <label for="dateFrom" class="form-label">From:</label>
+              <input type="date" id="dateFrom" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label for="dateTo" class="form-label">To:</label>
+              <input type="date" id="dateTo" class="form-control">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button id="searchRange" class="btn btn-primary w-100" disabled>Load Filtered Messages</button>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-8 d-flex align-items-end mt-4">
+              <p><b>WARNING:</b> Loading all messages might result in a very long list!<br>(Also some duderino has filled the DB with diller messages, so be prepared)</p>
+            </div>
+            <!-- Load All Messages Button -->
+            <!-- Dumb HTML can't create variables, so I'm using a hidden field to send data -->
+            <div class="col-md-4 d-flex align-items-end">
+              <button id="fetchAll" class="btn btn-warning w-100">Load All</button>
+            </div>
+          </div>
+          <table class="table table-striped mb-0 mt-4">
+            <thead>
+              <tr>
+                <th>Timestamp</th><th>Email</th><th>Message</th><th>IP Address</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="readTable">
+              <!-- A JS fetch will fill out this table -->
+               
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Remove messages from unread list if read button is clicked -->
+<!-- Server does the actual updating of the DB -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    //remove message from unread messages if marked as read
+    document.querySelectorAll('.mark-read-form').forEach(form => {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const url = form.action;
+            try {
+                const res = await fetch(url, { method: 'POST' });
+                if (!res.ok) throw new Error(res.statusText);
+                // Remove the row from the table
+                const row = form.closest('tr');
+
+                row.parentNode.removeChild(row);
+            } catch (error) {
+                console.error('Error marking message as read:', error);
+                alert('Failed to mark message as read. Please try again.');
+            }
+        });
+    });
+});
+</script>
+
+<!-- Load Read Messages -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // General Overview
+  const btn         = document.getElementById('searchRange');
+  const from        = document.getElementById('dateFrom');
+  const to          = document.getElementById('dateTo');
+  const tbody       = document.getElementById('readTable');
+  const loadAllBtn  = document.getElementById('fetchAll');
+
+  from.value = '';
+  to.value   = '';
+
+  btn.disabled = true;
+
+  function updateButton() {
+    const f = from.value
+    const t = to.value;
+    btn.disabled = !(f && t && new Date(t) > new Date(f));
+  }
+  from.addEventListener('input', updateButton);
+  to.addEventListener('input',   updateButton);
+  updateButton();
+
+  async function fetchMessages(qsString) {
+    try {
+      const res  = await fetch(`/api/messages/read?${qsString.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+
+      if (!data || !Array.isArray(data)) {
+        tbody.innerHTML    = '';
+        return;
+      }
+
+      console.log('Loaded read messages:', data);
+
+      // clear old rows
+      tbody.innerHTML = '';
+
+      // populate with new cool data
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.timestamp}</td>
+          <td>${r.email}</td>
+          <td>${r.message}</td>
+          <td>${r.ip}</td>
+          <td>
+            <form class="mark-unread-form" action="/api/message/unread?msg_id=${r.id}" method="POST">
+              <button type="submit" class="btn btn-warning btn-sm">Unread</button>
+            </form>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Remove row from table if marked as unread
+      tbody.querySelectorAll('.mark-unread-form').forEach(form => {
+        form.addEventListener('submit', async ev => {
+          ev.preventDefault();
+          try {
+            const res2 = await fetch(form.action, { method: 'POST' });
+            if (!res2.ok) throw new Error(res2.statusText);
+            form.closest('tr').remove();
+          } catch (err) {
+            console.error('Error marking as unread:', err);
+            alert('Failed to mark message as unread.');
+          }
+        });
+      });
+
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  };
+
+  // search‐range button
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const qs = new URLSearchParams({
+      dateFrom: from.value,
+      dateTo:   to.value
+    });
+    fetchMessages(qs.toString());
+  });
+
+  // load all button
+  loadAllBtn.addEventListener('click', e => {
+    e.preventDefault();
+    const qs = new URLSearchParams({ fetchAll: 'True' });
+    fetchMessages(qs.toString());
+  });
+});
+</script>
+
 {% endblock %}

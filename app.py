@@ -123,6 +123,8 @@ if not FERNET_KEY:
 else:
     print("Fernet key found in environment variable, and loaded successfully")
     print("We lucky :D")
+    # DON'T DO THIS PRINT IN PROD, U GET FIRED >:|
+    print(f"Fernet key: {FERNET_KEY}")
 
 ############################################# WEBSITE ROUTES BELOW #############################################
 
@@ -152,6 +154,7 @@ def dashboard():
         user = current_user.username
         now = datetime.now(timezone.utc)+timedelta(hours=2)
 
+        # Big extract, maybe move to API later to lighten the load on the dashboard route
         try: 
             conn = db_connect()
             times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
@@ -194,18 +197,10 @@ def dashboard():
             if times:
                 times = [dict(time) for time in times]
             total_times = dict(total_times)
-            #totaltime = datetime.strptime("00:00:00", "%H:%M:%S")
+
             for time in times:
                 time["duration"] = time["duration"][:-4][12:]
                 time["overtime"] = time["overtime"][:-4][12:]
-                #totaltime = totaltime + datetime.strptime(time["duration"], "%H:%M:%S")
-                #print(f"Total time: {totaltime}")
-            
-            print("#################################################")
-            print(f"Times: {times}")
-            print(f"Total Times: {total_times}")
-            print(datetime.strptime(times[0]["duration"], "%H:%M:%S"))
-            print("#################################################")
 
         except Exception as e:
             print(f"Database error: {e}")
@@ -221,6 +216,7 @@ def dashboard():
         try:
             conn = db_connect()
             # Add back later: AND lastname != "root"
+            # Currently using the root employee for testing
             users = conn.execute("""SELECT id, username, name, lastname FROM users 
                                 WHERE role = "employee"                               
                                 AND deleted_at IS NULL
@@ -233,8 +229,22 @@ def dashboard():
             conn.close()
 
         return render_template("orgadmin_dashboardV2.html", users=users)
+    
     elif current_user.is_authenticated and current_user.is_sysadmin:
-        return render_template('sysadmin_dashboard.html')
+        try:
+            conn = db_connect()
+            messages = conn.execute("""SELECT * FROM contact
+                                    WHERE is_read = 0
+                                    ORDER BY timestamp ASC""").fetchall()
+            conn.commit()
+            messages = [dict(message) for message in messages]
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+        return render_template('sysadmin_dashboard.html', messages=messages)
     else:
         return render_template('forbidden.html')
 
@@ -333,10 +343,10 @@ def time_zone():
         return render_template('timezone.html', machines=machines, active_machines=active_machines)
     elif current_user.is_authenticated and current_user.is_org_admin:
 
-        return render_template('timezone.html')
+        return render_template('admin_timezone.html')
     elif current_user.is_authenticated and current_user.is_sysadmin:
 
-        return render_template('timezone.html')
+        return render_template('admin_timezone.html')
     else:
         return render_template('forbidden.html')
 
@@ -410,6 +420,117 @@ def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 ############################################# API ENDPOINTS BELOW ##############################################
+
+# API route for marking a message as read
+@app.route('/api/message', methods=['POST'])
+@login_required
+@sysadmin_required
+def mark_message_read():
+    print(f"Mark message read API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    message_id = request.args.get('msg_id')
+
+    print(f"Message ID: {message_id}")
+
+    try:
+        conn = db_connect()
+        conn.execute('UPDATE contact SET is_read = 1 WHERE id = ?', (message_id,))
+        conn.commit()
+        print(f"Message with ID {message_id} marked as read")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error, please contact support', 'danger')
+        return jsonify({"Success": False, "Message": "Database error"}), 500
+    finally:
+        conn.close()
+
+    return jsonify({"Success": True, "Message": "API endpoint hit, message marked as read"}), 200
+
+# API route for marking a message as unread
+@app.route('/api/message/unread', methods=['POST'])
+@login_required
+@sysadmin_required
+def mark_message_unread():
+    print(f"Mark message unread API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    message_id = request.args.get('msg_id')
+
+    print(f"Message ID: {message_id}")
+
+    try:
+        conn = db_connect()
+        conn.execute('UPDATE contact SET is_read = 0 WHERE id = ?', (message_id,))
+        conn.commit()
+        print(f"Message with ID {message_id} marked as unread")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error, please contact support', 'danger')
+        return jsonify({"Success": False, "Message": "Database error"}), 500
+    finally:
+        conn.close()
+
+    return jsonify({"Success": True, "Message": "API endpoint hit, message marked as unread"}), 200
+
+# API route for fetching read messages
+@app.route('/api/messages/read', methods=['GET'])
+@login_required
+@sysadmin_required
+def get_read_messages():
+    print(f"Get read messages API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    date_from = request.args.get('dateFrom')
+    date_to = request.args.get('dateTo')
+    fetch_all = request.args.get('fetchAll')
+
+    print(f"Date from: {date_from}, Date to: {date_to}")
+    print(f"Fetch all: {fetch_all}")
+
+    if fetch_all:
+        print("Fetching all read messages")
+        try:
+            conn = db_connect()
+            messages = conn.execute('''SELECT * FROM contact 
+                                    WHERE is_read = 1 
+                                    ORDER BY timestamp DESC''').fetchall()
+            conn.commit()
+            messages = [dict(message) for message in messages]
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return jsonify({"Success": False, "Message": "Database error"}), 500
+        finally:
+            conn.close()
+
+        if not messages:
+            return jsonify([]), 200
+        
+        return jsonify(messages), 200
+    elif not date_from or not date_to:
+        print("Both from and to dates are required")
+        return jsonify({"Success": False, "Message": "Both from and to dates are required"}), 400
+    elif date_from > date_to:
+        print("From date cannot be after to date")
+        return jsonify({"Success": False, "Message": "From date cannot be after to date"}), 400
+    else:
+        try:
+            conn = db_connect()
+            messages = conn.execute('''SELECT * FROM contact 
+                                    WHERE is_read = 1 
+                                    AND timestamp BETWEEN ? AND ?
+                                    ORDER BY timestamp DESC''', (date_from, date_to)).fetchall()
+            conn.commit()
+            messages = [dict(message) for message in messages]
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return jsonify({"Success": False, "Message": "Database error"}), 500
+        finally:
+            conn.close()
+
+        if not messages:
+            return jsonify([]), 200
+    print(f"Messages fetched: {messages}")
+    return jsonify(messages), 200
 
 # API route for fetching user work times for the employee dashboard
 @app.route('/api/times/user', methods=['GET'])
