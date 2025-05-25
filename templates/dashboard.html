@@ -44,8 +44,8 @@
             <thead>
               <tr>
                 <h4>Monthly Overview</h4>
-                <p>Below is a summary of your registered work hours so far this month:</p>
-                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th>
+                <p>Below is a summary of your registered work hours so far in {{ current_month }} of {{ current_year }}:</p>
+                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th><th>Overtime Percentage</th>
               </tr>
             </thead>
             <tbody>
@@ -55,6 +55,7 @@
                 <td>{{ time.end_time }}</td>
                 <td>{{ time.duration }}</td>
                 <td>{{ time.overtime }}</td>
+                <td>{{ time.overtime_percentage }}%</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -62,16 +63,17 @@
           <table class="table table-striped mb-0 mt-4">
             <thead>
               <tr>
-                <th>Total time worked this month</th><th>Total overtime this month</th>
+                <th>Total time worked this month</th><th>Total overtime this month</th><th>Total overtime percentage this month</th>
               </tr>
             </thead>
             <tbody>
-              {% for time in times %}
+              
               <tr>
-                <td>{{ time.start_time }}</td>
-                <td>{{ time.end_time }}</td>
+                <td>{{ total_times.total_worked }}</td>
+                <td>{{ total_times.total_overtime }}</td>
+                <td>{{ total_times.overtime_percentage }}%</td>
               </tr>
-              {% endfor %}
+              
             </tbody>
           </table>
         </div>
@@ -82,21 +84,39 @@
     <div class="tab-pane fade" id="pane-specific" role="tabpanel">
       <div class="row">
         <div class="card shadow-sm p-4">
+          <div class="row g-3 mb-3">
+            <h4>Specific Overview</h4>
+            <p>Please enter a start date and an end date to show your registered work hours for that period:</p>
+            <div class="col-md-4">
+              <label for="dateFromSpecific" class="form-label">From:</label>
+              <input type="date" id="dateFromSpecific" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label for="dateToSpecific" class="form-label">To:</label>
+              <input type="date" id="dateToSpecific" class="form-control">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button id="searchRangeSpecific" class="btn btn-primary w-100" disabled>Filter Hours</button>
+            </div>
+          </div>
           <table class="table table-striped mb-0">
             <thead>
               <tr>
-                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th>
+                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th><th>Overtime Percentage</th>
               </tr>
             </thead>
-            <tbody>
-              {% for time in times %}
+            <tbody id="specificOverviewTable">
+              <!-- A JS fetch will fill out this table -->
+            </tbody>
+          </table>
+          <table class="table table-striped mb-0 mt-4">
+            <thead>
               <tr>
-                <td>{{ time.start_time }}</td>
-                <td>{{ time.end_time }}</td>
-                <td>{{ time.duration }}</td>
-                <td>{{ time.overtime }}</td>
+                <th>Total time worked</th><th>Total overtime</th><th>Total overtime percentage</th>
               </tr>
-              {% endfor %}
+            </thead>
+            <tbody id="specificTotalTable">
+              <!-- A JS fetch will fill out this table -->
             </tbody>
           </table>
         </div>
@@ -105,6 +125,79 @@
   </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // General Overview
+  const btn      = document.getElementById('searchRangeSpecific');
+  const from     = document.getElementById('dateFromSpecific');
+  const to       = document.getElementById('dateToSpecific');
+  const tbody    = document.getElementById('specificOverviewTable');
+  const tbodyTwo = document.getElementById('specificTotalTable');
 
+  from.value = '';
+  to.value   = '';
+
+  btn.disabled = true;
+
+  function updateButton() {
+    const f = from.value
+    const t = to.value;
+    btn.disabled = !(f && t && new Date(t) > new Date(f));
+  }
+  from.addEventListener('input', updateButton);
+  to.addEventListener('input',   updateButton);
+  updateButton();
+
+  btn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy, remember this for later, also maybe fix all your old crap where you don't have it since it took you two weeks to find it >:|
+    e.preventDefault();  
+
+    
+    const qs   = new URLSearchParams({ dateFrom: from.value, dateTo: to.value });
+
+    try {
+      const res  = await fetch(`/api/times/user?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+
+      if (!data || !Array.isArray(data) || data[1] == null) {
+        tbody.innerHTML    = '';
+        tbodyTwo.innerHTML    = '';
+        return;
+      }
+
+      // clear old rows
+      tbody.innerHTML = '';
+
+      // populate with new cool data
+      data[0].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.start_time}</td>
+          <td>${r.end_time}</td>
+          <td>${r.worked}</td>
+          <td>${r.overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      data[1].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.total_worked}</td>
+          <td>${r.total_overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        tbodyTwo.appendChild(tr);
+      });
+
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+});
+</script>
 
 {% endblock %}

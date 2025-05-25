@@ -150,6 +150,7 @@ def dashboard():
     # REMOVE LOGIC ONCE API IS SET UP
     if current_user.is_authenticated and current_user.is_employee:
         user = current_user.username
+        now = datetime.now(timezone.utc)+timedelta(hours=2)
 
         try: 
             conn = db_connect()
@@ -157,15 +158,42 @@ def dashboard():
                          CASE 
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
-                         END AS overtime
+                         END AS overtime,
+                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
+                                 CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
+                                 THEN 60
+                                 ELSE 0
+                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
                          FROM timeentries
                          WHERE user = ?
                          AND start_time >= DATE("now", "start of month")
                          AND end_time IS NOT NULL
                          AND machine IS NULL
                          ORDER BY start_time ASC''', (user,)).fetchall()
+            
+            total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE user = ?
+                                        AND start_time >= DATE("now", "start of month")
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user''', (user,)).fetchone()
+
             conn.commit()
-            times = [dict(time) for time in times]
+            if times:
+                times = [dict(time) for time in times]
+            total_times = dict(total_times)
             #totaltime = datetime.strptime("00:00:00", "%H:%M:%S")
             for time in times:
                 time["duration"] = time["duration"][:-4][12:]
@@ -175,6 +203,7 @@ def dashboard():
             
             print("#################################################")
             print(f"Times: {times}")
+            print(f"Total Times: {total_times}")
             print(datetime.strptime(times[0]["duration"], "%H:%M:%S"))
             print("#################################################")
 
@@ -185,7 +214,7 @@ def dashboard():
         finally:
             conn.close()
 
-        return render_template('dashboard.html', times=times)
+        return render_template('dashboard.html', times=times, total_times=total_times, current_month=now.strftime("%B"), current_year=now.strftime("%Y"))
     
     elif current_user.is_authenticated and current_user.is_org_admin:
 
@@ -388,7 +417,81 @@ def serve_sw():
 def get_user_times():
     print(f"User times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
 
-    return jsonify({ "Success": True, "Message": "This endpoint is not implemented yet." }), 200
+    user = current_user.username
+    from_date = request.args.get('dateFrom')
+    to_date = request.args.get('dateTo')
+
+    if not from_date or not to_date:
+        flash('Both from and to dates are required.', 'danger')
+        print("Both from and to dates are required")
+        return redirect(url_for('dashboard'))
+    elif from_date > to_date:
+        flash('From date cannot be after to date.', 'danger')
+        print("From date cannot be after to date")
+        return redirect(url_for('dashboard'))
+    elif not user:
+        flash('User not found, please contact support.', 'danger')
+        print("User not found")
+        return redirect(url_for('dashboard'))
+    else:
+        try:
+            conn = db_connect()
+            times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
+                         CASE 
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                         END AS overtime,
+                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
+                                 CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
+                                 THEN 60
+                                 ELSE 0
+                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         FROM timeentries
+                         WHERE user = ?
+                         AND DATE(start_time) BETWEEN ? AND ?
+                         AND end_time IS NOT NULL
+                         AND machine IS NULL
+                         ORDER BY start_time ASC''', (user, from_date, to_date)).fetchall()
+            
+            total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE user = ?
+                                        AND DATE(start_time) BETWEEN ? AND ?
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user''', (user, from_date, to_date)).fetchone()
+            conn.commit()
+            if times:
+                times = [dict(time) for time in times]
+            else:
+                return jsonify([]), 200
+            
+            for time in times:
+                time["worked"] = time["worked"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+            total_times = dict(total_times)
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('dashboard'))
+        finally:
+            conn.close()
+
+        print(f"Sent data: {[times, [total_times]]}")
+
+        return jsonify([times, [total_times]]), 200
 
 # API route for fetching user work times for the org admin dashboard
 @app.route('/api/times', methods=['GET'])
