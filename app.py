@@ -382,7 +382,15 @@ def serve_sw():
 
 ############################################# API ENDPOINTS BELOW ##############################################
 
-# API route for fetching user work times
+# API route for fetching user work times for the employee dashboard
+@app.route('/api/times/user', methods=['GET'])
+@login_required
+def get_user_times():
+    print(f"User times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    return jsonify({ "Success": True, "Message": "This endpoint is not implemented yet." }), 200
+
+# API route for fetching user work times for the org admin dashboard
 @app.route('/api/times', methods=['GET'])
 @login_required
 @admin_required
@@ -415,7 +423,12 @@ def get_times():
                                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
                                                 THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                 ELSE 0
-                                            END), "unixepoch") AS total_overtime
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
                                         FROM timeentries
                                         WHERE DATE(start_time) BETWEEN ? AND ?
                                         AND end_time IS NOT NULL
@@ -438,16 +451,25 @@ def get_times():
             return redirect(url_for('dashboard'))
         finally:
             conn.close()
+
+        return jsonify(times), 200
     elif user:
         try: 
             conn = db_connect()
             user = conn.execute('SELECT username, name, lastname FROM users WHERE id = ?', (user,)).fetchone()
             user = dict(user)
+            # Logic in these makes my head hurt, but it works, fricken finally
             times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
                          CASE 
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
-                         END AS overtime
+                         END AS overtime,
+                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
+                                 CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
+                                 THEN 60
+                                 ELSE 0
+                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
                          FROM timeentries
                          WHERE user = ?
                          AND DATE(start_time) BETWEEN ? AND ?
@@ -455,30 +477,53 @@ def get_times():
                          AND machine IS NULL
                          ORDER BY start_time ASC''', (user["username"], from_date_emp, to_date_emp)).fetchall()
             
+            total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE user = ?
+                                        AND DATE(start_time) BETWEEN ? AND ?
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user''', (user["username"], from_date_emp, to_date_emp)).fetchone()
+
             conn.commit()
-            times = [dict(time) for time in times]
+            
+            if times:
+                times = [dict(time) for time in times]
+            else:
+                return jsonify([]), 200
+            total_times = dict(total_times)
+
             print(f"Times fetched for user {user['name']} {user['lastname']}: {times}")
+            print(f"Total times for user {user['name']} {user['lastname']}: {total_times}")
         except Exception as e:
             print(f"Database error: {e}")
             flash('Database error, please contact support', 'danger')
             return redirect(url_for('dashboard'))
         finally:
             conn.close()
-
-        for time in times:
-            time["worked"] = time["worked"][:-4][12:]
-            time["overtime"] = time["overtime"][:-4][12:]
-            time["user"] = user["name"] + " " + user["lastname"]
+        if times:
+            for time in times:
+                time["worked"] = time["worked"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+                time["user"] = user["name"] + " " + user["lastname"]
 
         print(f"Times fetched for user {user['name']} {user['lastname']}: {times}")
-
+        print(f"Data sent: {[times, [total_times]]}")
+        return jsonify([times, [total_times]]), 200
     else:
         flash('Invalid request, please contact support', 'danger')
-        print("Invalid request in org admin API. If this prints, something is wrong, and your code is poop :(")
+        print("Invalid request in org admin API. If this prints, something is wrong, and your code is poop. Give up and live under a bridge :(")
         return redirect(url_for('dashboard'))
-
-    return jsonify(times), 200
-
 
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
@@ -929,9 +974,6 @@ def contactAPI():
 
     return redirect(url_for("contact"))
     
-
-
-
 ################################################### CONFIG #####################################################
 
 # Config, app runs locally on port 5000. NGINX proxies outisde requests to this port, and sends the apps response back to the client.

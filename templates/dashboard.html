@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-
+<!-- Flash messages and header -->
 <div class="container py-4">
   <div class="row">
     <div class="col">
-      <h1 class="h3 mb-1">Monthly overview of hours worked</h1>
+      <h1 class="h3 mb-1">Employee Dashboard</h1>
       <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
     <div class="col">
@@ -20,44 +20,87 @@
       {% endwith %}
     </div>
   </div>
-  <div class="row">
-    <div class="card shadow-sm p-4">
-      <table class="table table-striped mb-0">
-        <thead>
-          <tr>
-            <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for time in times %}
-          <tr>
-            <td>{{ time.start_time }}</td>
-            <td>{{ time.end_time }}</td>
-            <td>{{ time.duration }}</td>
-            <td>{{ time.overtime }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+  <!-- Nav Tabs -->
+  <ul class="nav nav-pills mb-4 mt-1" id="dashTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-month" data-bs-toggle="pill" data-bs-target="#pane-month" type="button" role="tab">
+        <i class="bi bi-calendar2-heart"></i> Monthly Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-specific" data-bs-toggle="pill" data-bs-target="#pane-specific" type="button" role="tab">
+        <i class="bi bi-hourglass"></i> Specific Overview
+      </button>
+    </li>
+  </ul>
+
+  <!-- Monthly Overview Tab -->
+  <div class="tab-content" id="empTabsContent">
+    <div class="tab-pane fade show active" id="pane-month" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <h4>Monthly Overview</h4>
+                <p>Below is a summary of your registered work hours so far this month:</p>
+                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for time in times %}
+              <tr>
+                <td>{{ time.start_time }}</td>
+                <td>{{ time.end_time }}</td>
+                <td>{{ time.duration }}</td>
+                <td>{{ time.overtime }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <table class="table table-striped mb-0 mt-4">
+            <thead>
+              <tr>
+                <th>Total time worked this month</th><th>Total overtime this month</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for time in times %}
+              <tr>
+                <td>{{ time.start_time }}</td>
+                <td>{{ time.end_time }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="row mt-4">
-    <div class="card shadow-sm p-4">
-      <table class="table table-striped mb-0">
-        <thead>
-          <tr>
-            <th>Total time worked this month</th><th>Total overtime this month</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for time in times %}
-          <tr>
-            <td>{{ time.start_time }}</td>
-            <td>{{ time.end_time }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+    <!-- Specific Tab -->
+    <div class="tab-pane fade" id="pane-specific" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for time in times %}
+              <tr>
+                <td>{{ time.start_time }}</td>
+                <td>{{ time.end_time }}</td>
+                <td>{{ time.duration }}</td>
+                <td>{{ time.overtime }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>

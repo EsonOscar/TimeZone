@@ -32,10 +32,10 @@
         <i class="bi bi-hourglass"></i> Employee Specific Overview
       </button>
     </li>
-    </ul>
+  </ul>
 
   <!-- General Overview Tab --> 
-   <div class="tab-content" id="orgTabsContent">
+  <div class="tab-content" id="orgTabsContent">
     <div class="tab-pane fade show active" id="pane-general" role="tabpanel">
       <div class="card shadow-sm p-4">
         <div class="row g-3 mb-3">
@@ -58,7 +58,7 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Name</th><th>Hours Worked</th><th>Overtime Hours Worked</th>
+              <th>Name</th><th>Hours Worked</th><th>Overtime Hours Worked</th><th>Overtime Percentage</th>
             </tr>
           </thead>
           <tbody id="generalOverviewTable">
@@ -100,11 +100,21 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime Hours Worked</th>
+              <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime Hours Worked</th><th>Overtime Percentage</th>
             </tr>
           </thead>
           <tbody id="employeeOverviewTable">
             <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
+        <table class="table table-striped mb-0 mt-4">
+          <thead>
+            <tr>
+              <th>Total Hours</th><th>Total Overtime Hours</th><th>Total Overtime Percentage</th>
+            </tr>
+          </thead>
+          <tbody id="employeeTotalTable">
+            <!-- A JS fetch will fill out this table (JS is such a nice dude doing all this work for us) -->
           </tbody>
         </table>
       </div>
@@ -113,6 +123,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // General Overview
   const genBtn     = document.getElementById('searchRangeGeneral');
   const genFrom    = document.getElementById('dateFromGeneral');
   const genTo      = document.getElementById('dateToGeneral');
@@ -144,6 +155,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
 
+      if (!data || !Array.isArray(data)) {
+        empTbody.innerHTML    = '';
+        return;
+      }
+
       // clear old rows
       genTbody.innerHTML = '';
 
@@ -154,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${r.user}</td>
           <td>${r.total_worked}</td>
           <td>${r.total_overtime}</td>
+          <td>${r.overtime_percentage}%</td>
         `;
         genTbody.appendChild(tr);
       });
@@ -163,11 +180,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Employee Specific Overview
   const empBtn      = document.getElementById('searchRangeEmployee');
   const empFrom     = document.getElementById('dateFromEmployee');
   const empTo       = document.getElementById('dateToEmployee');
   const empUser     = document.getElementById('userSelectOverview');
   const empTbody    = document.getElementById('employeeOverviewTable');
+  const empTbodyTwo = document.getElementById('employeeTotalTable');
 
   empFrom.value = '';
   empTo.value   = '';
@@ -198,21 +217,46 @@ document.addEventListener('DOMContentLoaded', () => {
       const res  = await fetch(`/api/times?${qs.toString()}`, { method: 'GET' });
       if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
+      console.log(data);
+      console.log(`data[0]: ${data[0]}`);
+      console.log(`data[1]: ${data[1]}`);
+
+      if (!data || !Array.isArray(data) || data[1] == null) {
+        empTbodyTwo.innerHTML    = '';
+        return;
+      }
 
       // clear old rows
       empTbody.innerHTML = '';
+      empTbodyTwo.innerHTML = '';
 
       // populate with new cool data
-      data.forEach(r => {
+      data[0].forEach(r => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${r.start_time}</td>
           <td>${r.end_time}</td>
           <td>${r.worked}</td>
           <td>${r.overtime}</td>
+          <td>${r.overtime_percentage}%</td>
         `;
         empTbody.appendChild(tr);
+        
       });
+
+     // Populate second table with even cooler data (intense!)
+      data[1].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.total_worked}</td>
+          <td>${r.total_overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        empTbodyTwo.appendChild(tr);
+        
+      });
+    
+    //upsi lil error uwu
     } catch (err) {
       console.error('Failed to load overview:', err);
       alert('Error loading data — see console for details.');
