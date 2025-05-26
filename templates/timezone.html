@@ -65,7 +65,9 @@
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">Start your working day</h5>
               <p class="card-text">Get to work you lazy bastard >:|</p>
-              <button id="startBtn" class="btn btn-primary" action="{{ url_for('timezone_user_api') }}">Start Day</button>
+              <button id="startBtn" class="btn btn-primary"> Start dagen</button>
+              <p id="statusmsg" class="mt-2 text-muted"></p>
+              <p id="timerDisplay" class="mt-2 fw-bold"></p> 
             </div>
           </div>
         </div>
@@ -249,4 +251,91 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 });
 </script>
 
+<script>
+  console.log("java er undlæst");
+
+  const startBtn = document.getElementById("startBtn");
+  const statusMsg = document.getElementById("statusmsg");
+  const timerDisplay = document.getElementById("timerDisplay");
+
+  let startTime = null;
+  let timer = null;
+  let working = false;
+
+  function startTimer() {
+    startTime = new Date();
+    timer = setInterval(() => {
+      const now = new Date();
+      const forskellen = Math.floor((now - startTime) / 1000);
+      const hours = Math.floor(forskellen/ 3600).toString().padStart(2, '0');
+      const minutes = Math.floor((forskellen % 3600) / 60).toString().padStart(2, '0');
+      const seconds = (forskellen % 60).toString().padStart(2, '0');
+      timerDisplay.innerText = `tid i gang: ${hours}:${minutes}:${seconds}`;
+    },1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timer);
+    timerDisplay.innerText = "";
+  }
+
+  startBtn.addEventListener("click", function () {
+    console.log("startBtn clicked");
+    statusMsg.innerText = "";
+    startBtn.disabled = true;
+
+
+    fetch("{{ url_for('timezone_user_api') }}", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      credentials: "same-origin"
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("pisse lort fejl" + response.status);
+      }
+      return response.json();
+    })
+    .then (data =>{
+      if (data.status === "success" || data.status === "great success") {
+        if (data.action === "start") {
+          startBtn.innerText = "stop lorte dagen";
+          startBtn.classList.replace("btn-primary", "btn-danger");
+          statusMsg.innerText = data.message;
+          working = true;
+          startTimer();
+        } 
+        else if (data.action === "stop") {
+            console.log("stop action received");
+           startBtn.innerText = "er du allerede færdig store drov";
+           startBtn.classList.replace("btn-danger", "btn-success");           
+           statusMsg.innerText = data.message;
+           working = false;
+           stopTimer();
+          
+        
+          setTimeout(() => {
+            startBtn.innerText = "vil du starte igen taber kylling";
+            startBtn.className = "btn btn-primary";
+            startBtn.disabled = false;
+            statusMsg.innerText = "";
+            working = false;
+          }, 3000);  
+        }
+      } else {
+        statusMsg.innerText = "kæmpe lortefejl lorte it folk: " + data.message;
+      }
+
+      setTimeout(() => {
+        startBtn.disabled = false;
+      }, 3000); 
+    })
+    .catch(error => {
+      statusMsg.innerText ="skyd mig der ingen forbindelse til serveren";
+      console.error("Error:", error);
+      startBtn.disabled = false;
+    
+    });
+  });
+</script>
 {% endblock %}
