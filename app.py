@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from time import sleep
 import sqlite3
 import json
+import os
 
 # Tell Flask to show the actual request IP in the log, instead of 127.0.0.1 (NGINX)
 # The request handler is used in the app.run() method
@@ -114,6 +115,17 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+#Load the Fernet key from the environment variable (saved in .bashrc, don't tell anyone shhh)
+FERNET_KEY = os.environ.get('FERNET_KEY')
+if not FERNET_KEY:
+    print("ooooh boi u in danger, the fernet key wasn't found")
+    exit(1)
+else:
+    print("Fernet key found in environment variable, and loaded successfully")
+    print("We lucky :D")
+    # DON'T DO THIS PRINT IN PROD, U GET FIRED >:|
+    print(f"Fernet key: {FERNET_KEY}")
+
 ############################################# WEBSITE ROUTES BELOW #############################################
 
 #Index
@@ -137,37 +149,102 @@ def contact():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # REMOVE LOGIC ONCE API IS SET UP
     if current_user.is_authenticated and current_user.is_employee:
-        return render_template('dashboard.html')
+        user = current_user.username
+        now = datetime.now(timezone.utc)+timedelta(hours=2)
+
+        # Big extract, maybe move to API later to lighten the load on the dashboard route
+        try: 
+            conn = db_connect()
+            times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
+                         CASE 
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                         END AS overtime,
+                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
+                                 CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
+                                 THEN 60
+                                 ELSE 0
+                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         FROM timeentries
+                         WHERE user = ?
+                         AND start_time >= DATE("now", "start of month")
+                         AND end_time IS NOT NULL
+                         AND machine IS NULL
+                         ORDER BY start_time ASC''', (user,)).fetchall()
+            
+            total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE user = ?
+                                        AND start_time >= DATE("now", "start of month")
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user''', (user,)).fetchone()
+
+            conn.commit()
+            if times:
+                times = [dict(time) for time in times]
+            total_times = dict(total_times)
+
+            for time in times:
+                time["duration"] = time["duration"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+
+        return render_template('dashboard.html', times=times, total_times=total_times, current_month=now.strftime("%B"), current_year=now.strftime("%Y"))
+    
     elif current_user.is_authenticated and current_user.is_org_admin:
-        conn = db_connect()
-        users = conn.execute("""SELECT name, lastname, email FROM users 
-                             WHERE role = "employee" 
-                             AND lastname != "root"
-                             AND deleted_at IS NULL
-                             ORDER BY role DESC""").fetchall()
-        times = conn.execute("""SELECT user, start_time, end_time FROM timeentries
-                             WHERE machine IS NULL
-                             AND date(start_time, "start of month");""").fetchall()
-        
-        users = list(users)
-        i = 0
-        for user in users:
-            print(dict(users[i]))
-            i += 1
 
-        times = list(times)
-        i = 0
-        for entry in times:
-            print(dict(times[i]))
-            i += 1
+        try:
+            conn = db_connect()
+            # Add back later: AND lastname != "root"
+            # Currently using the root employee for testing
+            users = conn.execute("""SELECT id, username, name, lastname FROM users 
+                                WHERE role = "employee"                               
+                                AND deleted_at IS NULL
+                                ORDER BY name ASC""").fetchall()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
 
-
-        conn.close()
-
-        return render_template("orgadmin_dashboard.html", users=users)
+        return render_template("orgadmin_dashboardV2.html", users=users)
+    
     elif current_user.is_authenticated and current_user.is_sysadmin:
-        return render_template('sysadmin_dashboard.html')
+        try:
+            conn = db_connect()
+            messages = conn.execute("""SELECT * FROM contact
+                                    WHERE is_read = 0
+                                    ORDER BY timestamp ASC""").fetchall()
+            conn.commit()
+            messages = [dict(message) for message in messages]
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('index'))
+        finally:
+            conn.close()
+        return render_template('sysadmin_dashboard.html', messages=messages)
     else:
         return render_template('forbidden.html')
 
@@ -229,52 +306,6 @@ def user():
     else:
         return render_template('forbidden.html')
 
-#Dashboard
-@login_required
-@admin_required
-def orgdash():
-    # Opretter forbindelse til SQLite-databasen
-    conn = sqlite3.connect('TimeZone.db')
-    # Sørger for, at cursoren returnerer rækker som sqlite3
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # Henter raw sessions fra databasen, med TIMEDIFF
-    raw_sessions = cursor.execute("""
-        SELECT user, start_time, end_time, 
-        TIMEDIFF(end_time, start_time) AS varighed
-        FROM timeentries
-        ORDER BY start_time DESC
-    """).fetchall()
-
-    #Bygger en liste af sessions, hvor vi selv beregner varigheden
-    sessions = []
-    for s in raw_sessions:
-        check_in = datetime.fromisoformat(s['start_time'])
-        check_out = datetime.fromisoformat(s['end_time']) if s['end_time'] else None
-        # Beregn varighed: hvis brugeren stadig arbejder, skriv "Still working"
-        if check_out:
-            varighed = str(check_out - check_in)
-        else:
-            varighed = "Still working"
-        
-        sessions.append({  
-            'medarbejder': s['medarbejder'],
-            'check_in': s['check_in'],
-            'check_out': s['check_out'] or "N/A",
-            'varighed': varighed
-        })
- 
-    employees = [] 
-    for session in sessions:
-        employees.append(session['medarbejder'])
-          
-
-    # Lukker databaseforbindelsen
-    conn.close()
-
-    return render_template('orgadmin_dashboard.html', sessions=sessions, employees=employees)
-
 # TimeZone route
 # Employee time tracking and BLE scanning
 @app.route('/timezone')
@@ -312,10 +343,10 @@ def time_zone():
         return render_template('timezone.html', machines=machines, active_machines=active_machines)
     elif current_user.is_authenticated and current_user.is_org_admin:
 
-        return render_template('timezone.html')
+        return render_template('admin_timezone.html')
     elif current_user.is_authenticated and current_user.is_sysadmin:
 
-        return render_template('timezone.html')
+        return render_template('admin_timezone.html')
     else:
         return render_template('forbidden.html')
 
@@ -324,7 +355,7 @@ def time_zone():
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+
         try:
             conn = db_connect()
             row = conn.execute("""SELECT * FROM users 
@@ -337,10 +368,13 @@ def login():
         finally:
             conn.close()
 
+        pass_check = check_password_hash(row['password'], request.form.get('password', ''))
+        print(f"Password check: {pass_check}")
+
         if row['deleted_at'] is not None:
             flash('Your account has been deleted. Please contact support.', 'danger')
             return redirect(url_for('login'))
-        elif row and check_password_hash(row['password'], password):
+        elif row and pass_check:
             user = User(row)
             login_user(user)
             next_page = request.args.get('next') or url_for('index')
@@ -358,7 +392,7 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-
+# Doesn't work, cloudflare doesn't allow you to serve a robots.txt file from the root directory
 """
 @app.route('/robots.txt')
 def robots():
@@ -369,7 +403,7 @@ def robots():
     return resp
 """
 # Favicon
-# For the app
+# Happy lil whale for the app
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.static_url_path,'happy_logo.png', mimetype='image/vnd.microsoft.icon')
@@ -386,6 +420,392 @@ def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
 
 ############################################# API ENDPOINTS BELOW ##############################################
+
+# API route for marking a message as read
+@app.route('/api/message', methods=['POST'])
+@login_required
+@sysadmin_required
+def mark_message_read():
+    print(f"Mark message read API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    message_id = request.args.get('msg_id')
+
+    print(f"Message ID: {message_id}")
+
+    try:
+        conn = db_connect()
+        conn.execute('UPDATE contact SET is_read = 1 WHERE id = ?', (message_id,))
+        conn.commit()
+        print(f"Message with ID {message_id} marked as read")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error, please contact support', 'danger')
+        return jsonify({"Success": False, "Message": "Database error"}), 500
+    finally:
+        conn.close()
+
+    return jsonify({"Success": True, "Message": "API endpoint hit, message marked as read"}), 200
+
+# API route for marking a message as unread
+@app.route('/api/message/unread', methods=['POST'])
+@login_required
+@sysadmin_required
+def mark_message_unread():
+    print(f"Mark message unread API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    message_id = request.args.get('msg_id')
+
+    print(f"Message ID: {message_id}")
+
+    try:
+        conn = db_connect()
+        conn.execute('UPDATE contact SET is_read = 0 WHERE id = ?', (message_id,))
+        conn.commit()
+        print(f"Message with ID {message_id} marked as unread")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error, please contact support', 'danger')
+        return jsonify({"Success": False, "Message": "Database error"}), 500
+    finally:
+        conn.close()
+
+    return jsonify({"Success": True, "Message": "API endpoint hit, message marked as unread"}), 200
+
+# API route for fetching read messages
+@app.route('/api/messages/read', methods=['GET'])
+@login_required
+@sysadmin_required
+def get_read_messages():
+    print(f"Get read messages API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    date_from = request.args.get('dateFrom')
+    date_to = request.args.get('dateTo')
+    fetch_all = request.args.get('fetchAll')
+
+    print(f"Date from: {date_from}, Date to: {date_to}")
+    print(f"Fetch all: {fetch_all}")
+
+    if fetch_all:
+        print("Fetching all read messages")
+        try:
+            conn = db_connect()
+            messages = conn.execute('''SELECT * FROM contact 
+                                    WHERE is_read = 1 
+                                    ORDER BY timestamp DESC''').fetchall()
+            conn.commit()
+            messages = [dict(message) for message in messages]
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return jsonify({"Success": False, "Message": "Database error"}), 500
+        finally:
+            conn.close()
+
+        if not messages:
+            return jsonify([]), 200
+        
+        return jsonify(messages), 200
+    elif not date_from or not date_to:
+        print("Both from and to dates are required")
+        return jsonify({"Success": False, "Message": "Both from and to dates are required"}), 400
+    elif date_from > date_to:
+        print("From date cannot be after to date")
+        return jsonify({"Success": False, "Message": "From date cannot be after to date"}), 400
+    else:
+        try:
+            conn = db_connect()
+            messages = conn.execute('''SELECT * FROM contact 
+                                    WHERE is_read = 1 
+                                    AND timestamp BETWEEN ? AND ?
+                                    ORDER BY timestamp DESC''', (date_from, date_to)).fetchall()
+            conn.commit()
+            messages = [dict(message) for message in messages]
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return jsonify({"Success": False, "Message": "Database error"}), 500
+        finally:
+            conn.close()
+
+        if not messages:
+            return jsonify([]), 200
+    print(f"Messages fetched: {messages}")
+    return jsonify(messages), 200
+
+# API route for fetching user work times for the employee dashboard
+@app.route('/api/times/user', methods=['GET'])
+@login_required
+def get_user_times():
+    print(f"User times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    user = current_user.username
+    from_date = request.args.get('dateFrom')
+    to_date = request.args.get('dateTo')
+
+    if not from_date or not to_date:
+        flash('Both from and to dates are required.', 'danger')
+        print("Both from and to dates are required")
+        return redirect(url_for('dashboard'))
+    elif from_date > to_date:
+        flash('From date cannot be after to date.', 'danger')
+        print("From date cannot be after to date")
+        return redirect(url_for('dashboard'))
+    elif not user:
+        flash('User not found, please contact support.', 'danger')
+        print("User not found")
+        return redirect(url_for('dashboard'))
+    else:
+        try:
+            conn = db_connect()
+            times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
+                         CASE 
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                         END AS overtime,
+                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
+                                 CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
+                                 THEN 60
+                                 ELSE 0
+                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         FROM timeentries
+                         WHERE user = ?
+                         AND DATE(start_time) BETWEEN ? AND ?
+                         AND end_time IS NOT NULL
+                         AND machine IS NULL
+                         ORDER BY start_time ASC''', (user, from_date, to_date)).fetchall()
+            
+            total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE user = ?
+                                        AND DATE(start_time) BETWEEN ? AND ?
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user''', (user, from_date, to_date)).fetchone()
+            conn.commit()
+            if times:
+                times = [dict(time) for time in times]
+            else:
+                return jsonify([]), 200
+            
+            for time in times:
+                time["worked"] = time["worked"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+            total_times = dict(total_times)
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('dashboard'))
+        finally:
+            conn.close()
+
+        print(f"Sent data: {[times, [total_times]]}")
+
+        return jsonify([times, [total_times]]), 200
+
+# API route for fetching user work times for the org admin dashboard
+@app.route('/api/times', methods=['GET'])
+@login_required
+@admin_required
+def get_times():
+    print(f"Times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    from_date_gen = request.args.get('dateFromGeneral')
+    to_date_gen = request.args.get('dateToGeneral')
+
+    from_date_emp = request.args.get('dateFromEmployee')
+    to_date_emp = request.args.get('dateToEmployee')
+    user = request.args.get('userId')
+
+    print(f"From date: {from_date_gen}, To date: {to_date_gen}")
+    print(f"From date employee: {from_date_emp}, To date employee: {to_date_emp}")
+    print(f"User: {user}")
+
+    # THIS WORKS FOR NOW, BUT IMPLEMENT LOGIC FOR CHECKING IF DATES ARE SUPPLIED AND VALID
+
+    if from_date_gen and to_date_gen and not user:
+        try:
+            conn = db_connect()
+            users = conn.execute("""SELECT username, name, lastname FROM users 
+                                WHERE role = "employee"                               
+                                AND deleted_at IS NULL
+                                ORDER BY name ASC""").fetchall()
+            times = conn.execute("""SELECT user,
+                                        TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE DATE(start_time) BETWEEN ? AND ?
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user
+                                        ORDER BY user""", (from_date_gen, to_date_gen)).fetchall()
+            conn.commit()
+            times = [dict(time) for time in times]
+            
+            for user in users:
+                for time in times:
+                    if user["username"] == time["user"]:
+                        time["user"] = user["name"] + " " + user["lastname"]
+                        break
+             
+            print(f"Times fetched: {times}")
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('dashboard'))
+        finally:
+            conn.close()
+
+        return jsonify(times), 200
+    elif user:
+        try: 
+            conn = db_connect()
+            user = conn.execute('SELECT username, name, lastname FROM users WHERE id = ?', (user,)).fetchone()
+            user = dict(user)
+            # Logic in these makes my head hurt, but it works, fricken finally
+            times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
+                         CASE 
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                         END AS overtime,
+                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
+                                 CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
+                                 THEN 60
+                                 ELSE 0
+                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         FROM timeentries
+                         WHERE user = ?
+                         AND DATE(start_time) BETWEEN ? AND ?
+                         AND end_time IS NOT NULL
+                         AND machine IS NULL
+                         ORDER BY start_time ASC''', (user["username"], from_date_emp, to_date_emp)).fetchall()
+            
+            total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                                        TIME(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END), "unixepoch") AS total_overtime,
+                                        ROUND(SUM(CASE
+                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                ELSE 0
+                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        FROM timeentries
+                                        WHERE user = ?
+                                        AND DATE(start_time) BETWEEN ? AND ?
+                                        AND end_time IS NOT NULL
+                                        AND machine IS NULL
+                                        GROUP BY user''', (user["username"], from_date_emp, to_date_emp)).fetchone()
+
+            conn.commit()
+            
+            if times:
+                times = [dict(time) for time in times]
+            else:
+                return jsonify([]), 200
+            total_times = dict(total_times)
+
+            print(f"Times fetched for user {user['name']} {user['lastname']}: {times}")
+            print(f"Total times for user {user['name']} {user['lastname']}: {total_times}")
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('Database error, please contact support', 'danger')
+            return redirect(url_for('dashboard'))
+        finally:
+            conn.close()
+        if times:
+            for time in times:
+                time["worked"] = time["worked"][:-4][12:]
+                time["overtime"] = time["overtime"][:-4][12:]
+                time["user"] = user["name"] + " " + user["lastname"]
+
+        print(f"Times fetched for user {user['name']} {user['lastname']}: {times}")
+        print(f"Data sent: {[times, [total_times]]}")
+        return jsonify([times, [total_times]]), 200
+    else:
+        flash('Invalid request, please contact support', 'danger')
+        print("Invalid request in org admin API. If this prints, something is wrong, and your code is poop. Give up and live under a bridge :(")
+        return redirect(url_for('dashboard'))
+
+# API Route for changing the user password
+@app.route('/api/change_password', methods=['POST'])
+@login_required
+def change_password():
+    print(f"Change password API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    username = current_user.username
+    lastname = current_user.lastname
+
+    if lastname == "root":
+        print(f"An attempt has been made to change the password for the root user.")
+        flash(f"You cannot change the password for a root user.", "danger")
+        return redirect(url_for('user'))
+
+    try:
+        conn = db_connect()
+        old_password = conn.execute("""SELECT password FROM users 
+                               WHERE username = ?
+                               """, (username,)).fetchone()
+        old_password = str(old_password[0])
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Invalid username or password.', 'danger')
+        return redirect(url_for('user'))
+    finally:
+        conn.close()
+
+    old_check = check_password_hash(old_password, request.form.get('oldPassword', ''))
+    new_password = generate_password_hash(request.form.get('newPassword', ''))
+    print(f"Old password check: {old_check}, Old password hash: {old_password}")
+
+    if not new_password:
+        flash('All fields are required.', 'danger')
+        print("All fields are required")
+        return redirect(url_for('user'))
+
+    if not old_check:
+        flash('Your old password was incorrect, please try again', 'warning')
+        print("All fields are required")
+        return redirect(url_for('user'))
+
+    
+    print(f"Old password check: {old_check}, New password hash: {new_password}")
+
+    try:
+        conn = db_connect()
+        conn.execute("""UPDATE users SET password = ? WHERE username = ?""", (new_password, username))
+        conn.commit()
+        flash('Password changed successfully.', 'success')
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash('Database error', 'danger')
+        return redirect(url_for('user'))
+    finally:
+        conn.close()
+
+    return redirect(url_for('user'))        
 
 # API Route for machine timestamp creation
 @app.route("/api/timezone_machine/", methods=["POST"])
@@ -538,7 +958,7 @@ def admin_create_user():
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+        password = generate_password_hash(request.form.get("password", ""))
         name     = request.form.get("name", "").strip()
         lastname = request.form.get("lastname", "").strip()
         email    = request.form.get("email", "").strip()
@@ -563,7 +983,7 @@ def admin_create_user():
         conn = db_connect()
         try:
             conn.execute('INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            (username, generate_password_hash(password), name, lastname, email, role, paytype, pay, utc_dt))
+                            (username, password, name, lastname, email, role, paytype, pay, utc_dt))
             conn.commit()
             print('User created successfully.', 'success')
             flash(f'User {username} created successfully.', 'success')
@@ -807,8 +1227,6 @@ def contactAPI():
 
     return redirect(url_for("contact"))
     
-
-
 ################################################### CONFIG #####################################################
 
 # Config, app runs locally on port 5000. NGINX proxies outisde requests to this port, and sends the apps response back to the client.

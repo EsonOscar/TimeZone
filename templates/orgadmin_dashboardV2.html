@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col">
+      <h1 class="h3 mb-1">Orgadmin Dashboard</h1>
+      <p class="text-muted">Welcome, {{ current_user.name }}!</p>
+    </div>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+  </div>
+
+  <!-- Nav Tabs -->
+  <ul class="nav nav-pills mb-4 mt-1" id="dashTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-general" data-bs-toggle="pill" data-bs-target="#pane-general" type="button" role="tab">
+        <i class="bi bi-calendar2-heart"></i> General Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-employee" data-bs-toggle="pill" data-bs-target="#pane-employee" type="button" role="tab">
+        <i class="bi bi-hourglass"></i> Employee Specific Overview
+      </button>
+    </li>
+  </ul>
+
+  <!-- General Overview Tab --> 
+  <div class="tab-content" id="orgTabsContent">
+    <div class="tab-pane fade show active" id="pane-general" role="tabpanel">
+      <div class="card shadow-sm p-4">
+        <div class="row g-3 mb-3">
+          <h4>Overview of all employee work times</h4>
+          <p>To show employee work times, please define a start date and an end date below: </p>
+          <div class="col-md-4">
+            <label for="dateFromGeneral" class="form-label">From:</label>
+            <input type="date" id="dateFromGeneral" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label for="dateToGeneral" class="form-label">To:</label>
+            <input type="date" id="dateToGeneral" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRangeGeneral" class="btn btn-primary w-100" disabled>Filter Hours</button>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm p-4 mt-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Name</th><th>Hours Worked</th><th>Overtime Hours Worked</th><th>Overtime Percentage</th>
+            </tr>
+          </thead>
+          <tbody id="generalOverviewTable">
+            <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <!-- Employess Specific Overview Tab -->
+    <div class="tab-pane fade" id="pane-employee" role="tabpanel">
+      <div class="card shadow-sm p-4">
+        <!-- User Selection -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="userSelectOverview" class="form-label">Select User:</label>
+            <select id="userSelectOverview" class="form-select">
+              <option value="">- Select User -</option>
+              {% for u in users %}
+                <option value="{{ u.id }}">{{ u.name }} {{ u.lastname }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="dateFromEmployee" class="form-label">From:</label>
+            <input type="date" id="dateFromEmployee" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label for="dateToEmployee" class="form-label">To:</label>
+            <input type="date" id="dateToEmployee" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRangeEmployee" class="btn btn-primary w-100" disabled>Filter Hours</button>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm p-4 mt-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime Hours Worked</th><th>Overtime Percentage</th>
+            </tr>
+          </thead>
+          <tbody id="employeeOverviewTable">
+            <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
+        <table class="table table-striped mb-0 mt-4">
+          <thead>
+            <tr>
+              <th>Total Hours</th><th>Total Overtime Hours</th><th>Total Overtime Percentage</th>
+            </tr>
+          </thead>
+          <tbody id="employeeTotalTable">
+            <!-- A JS fetch will fill out this table (JS is such a nice dude doing all this work for us) -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // General Overview
+  const genBtn     = document.getElementById('searchRangeGeneral');
+  const genFrom    = document.getElementById('dateFromGeneral');
+  const genTo      = document.getElementById('dateToGeneral');
+  const genTbody   = document.getElementById('generalOverviewTable');
+
+  genFrom.value = '';
+  genTo.value   = '';
+
+  genBtn.disabled = true;
+
+  function updateGenButton() {
+    const f = genFrom.value
+    const t = genTo.value;
+    genBtn.disabled = !(f && t && new Date(t) > new Date(f));
+  }
+  genFrom.addEventListener('input', updateGenButton);
+  genTo.addEventListener('input',   updateGenButton);
+  updateGenButton();
+
+  genBtn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy, remember this for later, also maybe fix all your old crap where you don't have it since it took you two weeks to find it >:|
+    e.preventDefault();  
+
+    
+    const qs   = new URLSearchParams({ dateFromGeneral: genFrom.value, dateToGeneral: genTo.value });
+
+    try {
+      const res  = await fetch(`/api/times?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+
+      if (!data || !Array.isArray(data)) {
+        empTbody.innerHTML    = '';
+        return;
+      }
+
+      // clear old rows
+      genTbody.innerHTML = '';
+
+      // populate with new cool data
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.user}</td>
+          <td>${r.total_worked}</td>
+          <td>${r.total_overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        genTbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+
+  // Employee Specific Overview
+  const empBtn      = document.getElementById('searchRangeEmployee');
+  const empFrom     = document.getElementById('dateFromEmployee');
+  const empTo       = document.getElementById('dateToEmployee');
+  const empUser     = document.getElementById('userSelectOverview');
+  const empTbody    = document.getElementById('employeeOverviewTable');
+  const empTbodyTwo = document.getElementById('employeeTotalTable');
+
+  empFrom.value = '';
+  empTo.value   = '';
+  empUser.value = '';
+
+  empBtn.disabled = true;
+
+  function updateEmpButton() {
+    const f = empFrom.value
+    const t = empTo.value
+    const u = empUser.value;
+    empBtn.disabled = !(u && f && t && new Date(t) > new Date(f));
+    console.log(`empUser: ${u}, empFrom: ${f}, empTo: ${t}, disabled: ${empBtn.disabled}`);
+  }
+
+  empUser.addEventListener('change', updateEmpButton);
+  empFrom.addEventListener('input',  updateEmpButton);
+  empTo.addEventListener('input',    updateEmpButton);
+  updateEmpButton();
+
+  empBtn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy
+    e.preventDefault();  
+    
+    const qs   = new URLSearchParams({ dateFromEmployee: empFrom.value, dateToEmployee: empTo.value, userId: empUser.value });
+
+    try {
+      const res  = await fetch(`/api/times?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      console.log(data);
+      console.log(`data[0]: ${data[0]}`);
+      console.log(`data[1]: ${data[1]}`);
+
+      if (!data || !Array.isArray(data) || data[1] == null) {
+        empTbodyTwo.innerHTML    = '';
+        return;
+      }
+
+      // clear old rows
+      empTbody.innerHTML = '';
+      empTbodyTwo.innerHTML = '';
+
+      // populate with new cool data
+      data[0].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.start_time}</td>
+          <td>${r.end_time}</td>
+          <td>${r.worked}</td>
+          <td>${r.overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        empTbody.appendChild(tr);
+        
+      });
+
+     // Populate second table with even cooler data (intense!)
+      data[1].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.total_worked}</td>
+          <td>${r.total_overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        empTbodyTwo.appendChild(tr);
+        
+      });
+    
+    //upsi lil error uwu
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+
+});
+</script>
+
+{% endblock %}

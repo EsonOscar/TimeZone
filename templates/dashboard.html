@@ -1,127 +1,203 @@
 {% extends "base.html" %}
 
 {% block content %}
-
-<!-- Overskrift -->
-<div class="container">
-    <div class="header" style="margin-top: 30px;">
-        <h1 style="text-align: center; margin-top: 10px;">Employee Dashboard</h1>
+<!-- Flash messages and header -->
+<div class="container py-4">
+  <div class="row">
+    <div class="col">
+      <h1 class="h3 mb-1">Employee Dashboard</h1>
+      <p class="text-muted">Welcome, {{ current_user.name }}!</p>
     </div>
+    <div class="col">
+      {# Flash messages #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class= "mt-1 alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+  </div>
+
+  <!-- Nav Tabs -->
+  <ul class="nav nav-pills mb-4 mt-1" id="dashTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-month" data-bs-toggle="pill" data-bs-target="#pane-month" type="button" role="tab">
+        <i class="bi bi-calendar2-heart"></i> Monthly Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-specific" data-bs-toggle="pill" data-bs-target="#pane-specific" type="button" role="tab">
+        <i class="bi bi-hourglass"></i> Specific Overview
+      </button>
+    </li>
+  </ul>
+
+  <!-- Monthly Overview Tab -->
+  <div class="tab-content" id="empTabsContent">
+    <div class="tab-pane fade show active" id="pane-month" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <h4>Monthly Overview</h4>
+                <p>Below is a summary of your registered work hours so far in {{ current_month }} of {{ current_year }}:</p>
+                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th><th>Overtime Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for time in times %}
+              <tr>
+                <td>{{ time.start_time }}</td>
+                <td>{{ time.end_time }}</td>
+                <td>{{ time.duration }}</td>
+                <td>{{ time.overtime }}</td>
+                <td>{{ time.overtime_percentage }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <table class="table table-striped mb-0 mt-4">
+            <thead>
+              <tr>
+                <th>Total time worked this month</th><th>Total overtime this month</th><th>Total overtime percentage this month</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td>{{ total_times.total_worked }}</td>
+                <td>{{ total_times.total_overtime }}</td>
+                <td>{{ total_times.overtime_percentage }}%</td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Specific Tab -->
+    <div class="tab-pane fade" id="pane-specific" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <div class="row g-3 mb-3">
+            <h4>Specific Overview</h4>
+            <p>Please enter a start date and an end date to show your registered work hours for that period:</p>
+            <div class="col-md-4">
+              <label for="dateFromSpecific" class="form-label">From:</label>
+              <input type="date" id="dateFromSpecific" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label for="dateToSpecific" class="form-label">To:</label>
+              <input type="date" id="dateToSpecific" class="form-control">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <button id="searchRangeSpecific" class="btn btn-primary w-100" disabled>Filter Hours</button>
+            </div>
+          </div>
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Start Time</th><th>End Time</th><th>Hours Worked</th><th>Overtime</th><th>Overtime Percentage</th>
+              </tr>
+            </thead>
+            <tbody id="specificOverviewTable">
+              <!-- A JS fetch will fill out this table -->
+            </tbody>
+          </table>
+          <table class="table table-striped mb-0 mt-4">
+            <thead>
+              <tr>
+                <th>Total time worked</th><th>Total overtime</th><th>Total overtime percentage</th>
+              </tr>
+            </thead>
+            <tbody id="specificTotalTable">
+              <!-- A JS fetch will fill out this table -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-table {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
-}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // General Overview
+  const btn      = document.getElementById('searchRangeSpecific');
+  const from     = document.getElementById('dateFromSpecific');
+  const to       = document.getElementById('dateToSpecific');
+  const tbody    = document.getElementById('specificOverviewTable');
+  const tbodyTwo = document.getElementById('specificTotalTable');
 
-td, th {
-  border: 1px solid #dddddd;
-  text-align: left;
-  padding: 8px;
-}
+  from.value = '';
+  to.value   = '';
 
-tr:nth-child(even) {
-  background-color: #dddddd;
-}
-</style>
-</head>
-<body>
+  btn.disabled = true;
 
-<h2>Måneds Arbjedsplan</h2>
+  function updateButton() {
+    const f = from.value
+    const t = to.value;
+    btn.disabled = !(f && t && new Date(t) > new Date(f));
+  }
+  from.addEventListener('input', updateButton);
+  to.addEventListener('input',   updateButton);
+  updateButton();
 
-<!-- Select User -->
-{% for u in users %}
-<tr>
-  <td>{{ u.name }}</td>
-  <td>{{ u.lastname }}</td>
-  <td>{{ u.email }}</td>
-  <td>{{ u.role.replace('_',' ') }}</td>
-  <td>{{ u.created_at }}</td>
-</tr>
+  btn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy, remember this for later, also maybe fix all your old crap where you don't have it since it took you two weeks to find it >:|
+    e.preventDefault();  
 
-{% endfor %}
+    
+    const qs   = new URLSearchParams({ dateFrom: from.value, dateTo: to.value });
 
-<!-- Table -->
-<table class = "table"> 
-<table>
-  <tr>
-    <th>Dato</th>
-    <th>Tid arbejdet</th>
-    <th>Overtid</th>
+    try {
+      const res  = await fetch(`/api/times/user?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
 
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-    <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-    <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-</table>
+      if (!data || !Array.isArray(data) || data[1] == null) {
+        tbody.innerHTML    = '';
+        tbodyTwo.innerHTML    = '';
+        return;
+      }
 
-<table>
-  <tr>
-    <th>----</th>
-    <th>Total tid arbejdet</th>
-    <th>Total tid overarbejdet</th>
+      // clear old rows
+      tbody.innerHTML = '';
 
-   <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-   <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
+      // populate with new cool data
+      data[0].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.start_time}</td>
+          <td>${r.end_time}</td>
+          <td>${r.worked}</td>
+          <td>${r.overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
 
-</table>
+      data[1].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.total_worked}</td>
+          <td>${r.total_overtime}</td>
+          <td>${r.overtime_percentage}%</td>
+        `;
+        tbodyTwo.appendChild(tr);
+      });
 
-</body>
-</html>
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+});
+</script>
 
 {% endblock %}
