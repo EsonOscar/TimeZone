@@ -906,18 +906,47 @@ def timezone_user_api():
     user = current_user.username
 
     conn = db_connect()
-    try:
-        conn.execute('INSERT INTO timeentries (user, start_time) VALUES (?, ?)', (user, utc_dt))
-        conn.commit()
-        print(f"Timestamp created for user: {user} at {utc_dt}")
-        flash(f"Start Time created for user: {user} at {utc_dt}", "success")
-    except Exception as e:
-        print(f"Database error: {e}")
-        flash('Database error', 'danger')
-    finally:
-        conn.close()
+    try: 
+        cursor = conn.execute(
+            'SELECT id FROM timeentries WHERE user = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1',
+            (user,)
+        )
+        row = cursor.fetchone()
 
-    return redirect(url_for('time_zone'))
+        if row: 
+            conn.execute(
+                'UPDATE timeentries SET end_time = ? WHERE id = ?',
+                (utc_dt, row["id"])
+            )
+            conn.commit()
+            print(f' END time updated for user: {user} at {utc_dt}')
+            return jsonify({
+                "status": "success",
+                "message": f"DIN lorte dag er slut og registreret {user} at {utc_dt} og hvis du vil starte den igen tryk start dagen igen",
+                "action" : "stop"
+            })
+        else: 
+            conn.execute( 
+                "INSERT INTO timeentries (user, start_time) VALUES (?, ?)", 
+                (user, utc_dt)
+            )
+            conn.commit()
+            print(f"start time skabt for user: {user} kl. {utc_dt}")
+            return jsonify({
+                "status": "great success",
+                "message": f" btw din tid er startet {user} kl {utc_dt}",
+                "action": "start"
+            })
+    except Exception as e:
+        print(f"Database fejl: {e}")
+        return jsonify({
+            "status": "error",
+            "message": f"Databasefejl: {str(e)}"
+
+        }), 500
+    finally: 
+        conn.close()
+   
 
 #Route for an admin to create a new user.
 #Data from the create user form, located in the admin.html template, is sent to this route.
