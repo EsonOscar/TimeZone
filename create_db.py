@@ -60,7 +60,7 @@ c.execute("""CREATE TABLE IF NOT EXISTS service (
         );
         """)
 
-password_hash = generate_password_hash("cvnVDMLY!")
+password_hash = generate_password_hash("GONE")
 
 #c.execute("""INSERT INTO users (username, password, name, email, role) VALUES (?, ?, ?, ?, ?)""",
 #("sysadmin", password_hash, "SysAdmin", "sysadmin@hvalfangerne.com", "sysadmin"))

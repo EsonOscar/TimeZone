@@ -24,7 +24,7 @@ c.execute("""CREATE TABLE IF NOT EXISTS users (
     );
     """)
 
-password_hash = generate_password_hash("cvnVDMLY!")
+password_hash = generate_password_hash("GONE")
 
 c.execute("""INSERT INTO orgs (name) VALUES (?)""", ("TestOrg",))
 

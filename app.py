@@ -150,24 +150,29 @@ def contact():
 @login_required
 def dashboard():
     # REMOVE LOGIC ONCE API IS SET UP
+    # IGNORE THAT KEEP LOGIC TIHI
     if current_user.is_authenticated and current_user.is_employee:
         user = current_user.username
         now = datetime.now(timezone.utc)+timedelta(hours=2)
 
         # Big extract, maybe move to API later to lighten the load on the dashboard route
-        try: 
+        # LOGIC HERE WORKS
+        try:
             conn = db_connect()
             times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
                          CASE 
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
-                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) 
+                            ELSE "+0000-00-00 00:00:00"
                          END AS overtime,
-                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
-                                 CASE
-                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
-                                 THEN 60
-                                 ELSE 0
-                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         ROUND(CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                 THEN 0
+                                 ELSE
+                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                    * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
+                                    END, 2)
+                                 AS overtime_percentage
                          FROM timeentries
                          WHERE user = ?
                          AND start_time >= DATE("now", "start of month")
@@ -181,11 +186,16 @@ def dashboard():
                                                 THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                 ELSE 0
                                             END), "unixepoch") AS total_overtime,
-                                        ROUND(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        ROUND(CASE
+                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                                THEN 0
+                                                ELSE
+                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                             ELSE 0
+                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                                END, 2)
+                                        AS overtime_percentage
                                         FROM timeentries
                                         WHERE user = ?
                                         AND start_time >= DATE("now", "start of month")
@@ -200,7 +210,13 @@ def dashboard():
 
             for time in times:
                 time["duration"] = time["duration"][:-4][12:]
-                time["overtime"] = time["overtime"][:-4][12:]
+                if len(time["overtime"]) > 20:
+                    time["overtime"] = time["overtime"][:-4][12:]
+                else:
+                    time["overtime"] = time["overtime"][12:]
+
+            print(f"Times fetched: {times}")
+            print(f"Total times fetched: {total_times}")
 
         except Exception as e:
             print(f"Database error: {e}")
@@ -377,7 +393,7 @@ def login():
         elif row and pass_check:
             user = User(row)
             login_user(user)
-            next_page = request.args.get('next') or url_for('index')
+            next_page = url_for('index')
             return redirect(next_page)
         else:
             flash('Invalid username or password.', 'danger')
@@ -392,7 +408,7 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-# Doesn't work, cloudflare doesn't allow you to serve a robots.txt file from the root directory
+# Doesn't work, cloudflare doesn't allow you to serve a robots.txt file yourself, has to be set on the website. boooooo
 """
 @app.route('/robots.txt')
 def robots():
@@ -414,7 +430,8 @@ def favicon():
 def serve_manifest():
     return send_from_directory(app.root_path, 'manifest.json', mimetype='application/manifest+json')
 
-# Service Worker
+# Service Worker for PWA
+# Bare minimum atm, but it works, maybe expand later for offline functionality
 @app.route('/sw.js')
 def serve_sw():
     return send_from_directory(app.root_path, 'sw.js', mimetype='application/javascript')
@@ -562,12 +579,14 @@ def get_user_times():
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
                          END AS overtime,
-                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
-                                 CASE
-                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
-                                 THEN 60
-                                 ELSE 0
-                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         ROUND(CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                 THEN 0
+                                 ELSE
+                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                    * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
+                                    END, 2)
+                                 AS overtime_percentage
                          FROM timeentries
                          WHERE user = ?
                          AND DATE(start_time) BETWEEN ? AND ?
@@ -581,11 +600,16 @@ def get_user_times():
                                                 THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                 ELSE 0
                                             END), "unixepoch") AS total_overtime,
-                                        ROUND(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        ROUND(CASE
+                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                                THEN 0
+                                                ELSE
+                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                             ELSE 0
+                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                                END, 2) 
+                                        AS overtime_percentage
                                         FROM timeentries
                                         WHERE user = ?
                                         AND DATE(start_time) BETWEEN ? AND ?
@@ -614,7 +638,7 @@ def get_user_times():
 
         return jsonify([times, [total_times]]), 200
 
-# API route for fetching user work times for the org admin dashboard
+# API route for fetching all user work times for the org admin dashboard
 @app.route('/api/times', methods=['GET'])
 @login_required
 @admin_required
@@ -637,6 +661,8 @@ def get_times():
     if from_date_gen and to_date_gen and not user:
         try:
             conn = db_connect()
+            # Rewrite logic later to not include root accounts, currently using the root employee for testing
+            # WHERE lastname != "root"
             users = conn.execute("""SELECT username, name, lastname FROM users 
                                 WHERE role = "employee"                               
                                 AND deleted_at IS NULL
@@ -648,11 +674,16 @@ def get_times():
                                                 THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                 ELSE 0
                                             END), "unixepoch") AS total_overtime,
-                                        ROUND(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        ROUND(CASE
+                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                                THEN 0
+                                                ELSE
+                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                             ELSE 0
+                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                                END, 2)
+                                        AS overtime_percentage
                                         FROM timeentries
                                         WHERE DATE(start_time) BETWEEN ? AND ?
                                         AND end_time IS NOT NULL
@@ -661,13 +692,13 @@ def get_times():
                                         ORDER BY user""", (from_date_gen, to_date_gen)).fetchall()
             conn.commit()
             times = [dict(time) for time in times]
-            
+            users = [dict(user) for user in users]
+            print(f"Users fetched: {users}")
             for user in users:
                 for time in times:
                     if user["username"] == time["user"]:
                         time["user"] = user["name"] + " " + user["lastname"]
                         break
-             
             print(f"Times fetched: {times}")
         except Exception as e:
             print(f"Database error: {e}")
@@ -688,12 +719,14 @@ def get_times():
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
                          END AS overtime,
-                         ROUND(((strftime("%s", end_time) - strftime("%s", start_time)) -
-                                 CASE
-                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > 60
-                                 THEN 60
-                                 ELSE 0
-                                 END) * 100.0 / NULLIF((strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                         ROUND(CASE
+                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                 THEN 0
+                                 ELSE
+                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                    * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
+                                    END, 2)
+                                 AS overtime_percentage
                          FROM timeentries
                          WHERE user = ?
                          AND DATE(start_time) BETWEEN ? AND ?
@@ -707,11 +740,16 @@ def get_times():
                                                 THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                 ELSE 0
                                             END), "unixepoch") AS total_overtime,
-                                        ROUND(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END) * 100.0 / NULLIF(SUM(strftime("%s", end_time) - strftime("%s", start_time)), 0), 2) AS overtime_percentage
+                                        ROUND(CASE
+                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                                THEN 0
+                                                ELSE
+                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                             ELSE 0
+                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                                END, 2) 
+                                        AS overtime_percentage
                                         FROM timeentries
                                         WHERE user = ?
                                         AND DATE(start_time) BETWEEN ? AND ?

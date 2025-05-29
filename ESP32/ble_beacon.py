@@ -28,7 +28,6 @@ def advertise():
     
     scan_resp = bytes([len(MESSAGE) + 1, 0x09]) + MESSAGE
     
-    
     ble.gap_advertise(100_000, adv_data=adv_data, resp_data=scan_resp)
 
 while True:
