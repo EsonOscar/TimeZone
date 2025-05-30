@@ -16,6 +16,9 @@ import os
 # Tell Flask to show the actual request IP in the log, instead of 127.0.0.1 (NGINX)
 # The request handler is used in the app.run() method
 class ProxiedRequestHandler(WSGIRequestHandler):
+
+    """Proxy request handler class, makes sure we can access the real client IP"""
+    
     def address_string(self):
         # trust the first entry in X-Forwarded-For
         forwarded = self.headers.get('X-Forwarded-For', '')
@@ -52,6 +55,12 @@ def db_connect():
 
 # User class for Flask-Login
 class User(UserMixin):
+
+    """Current User class, extracts all necessary information about the current user from the database,
+       and saves it to object attributes.
+       
+       Also creates properties for quick checks to see what role the current user has."""
+
     def __init__(self, row):
         self.id             = row['id']
         self.username       = row['username']
