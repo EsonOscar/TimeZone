@@ -24,12 +24,22 @@
   <ul class="nav nav-pills mb-4 mt-1" id="dashTabs" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="tab-general" data-bs-toggle="pill" data-bs-target="#pane-general" type="button" role="tab">
-        <i class="bi bi-calendar2-heart"></i> General Overview
+        <i class="bi bi-calendar2-heart"></i> Employee General Overview
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-employee" data-bs-toggle="pill" data-bs-target="#pane-employee" type="button" role="tab">
         <i class="bi bi-hourglass"></i> Employee Specific Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-generalMachine" data-bs-toggle="pill" data-bs-target="#pane-generalMachine" type="button" role="tab">
+        <i class="bi bi-bus-front"></i> Machine General Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-machine" data-bs-toggle="pill" data-bs-target="#pane-machine" type="button" role="tab">
+        <i class="bi bi-truck"></i> Machine Specific Overview
       </button>
     </li>
   </ul>
@@ -67,7 +77,7 @@
         </table>
       </div>
     </div>
-  <!-- Employess Specific Overview Tab -->
+    <!-- Employess Specific Overview Tab -->
     <div class="tab-pane fade" id="pane-employee" role="tabpanel">
       <div class="card shadow-sm p-4">
         <!-- User Selection -->
@@ -114,6 +124,93 @@
             </tr>
           </thead>
           <tbody id="employeeTotalTable">
+            <!-- A JS fetch will fill out this table (JS is such a nice dude doing all this work for us) -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- General Machine Overview Tab --> 
+    <div class="tab-pane fade" id="pane-generalMachine" role="tabpanel">
+      <div class="card shadow-sm p-4">
+        <div class="row g-3 mb-3">
+          <h4>Overview of all machine usage times</h4>
+          <p>To show machine usage times, please define a start date and an end date below: </p>
+          <div class="col-md-4">
+            <label for="dateFromGeneralMachine" class="form-label">From:</label>
+            <input type="date" id="dateFromGeneralMachine" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label for="dateToGeneralMachine" class="form-label">To:</label>
+            <input type="date" id="dateToGeneralMachine" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRangeGeneralMachine" class="btn btn-primary w-100" disabled>Filter Hours</button>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm p-4 mt-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Name</th><th>Hours Used</th>
+            </tr>
+          </thead>
+          <tbody id="generalMachineOverviewTable">
+            <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Machine Specific Overview Tab -->
+    <!-- MAKE SOME JS FOR THIS, DOESN'T WORK ATM -->
+    <div class="tab-pane fade" id="pane-machine" role="tabpanel">
+      <div class="card shadow-sm p-4">
+        <!-- User Selection -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="machineSelectOverview" class="form-label">Select Machine:</label>
+            <select id="machineSelectOverview" class="form-select">
+              <option value="">- Select Machine -</option>
+              {% for u in users %}
+                <option value="{{ u.id }}">{{ u.name }} {{ u.lastname }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label for="dateFromMachine" class="form-label">From:</label>
+            <input type="date" id="dateFromMachine" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label for="dateToMachine" class="form-label">To:</label>
+            <input type="date" id="dateToMachine" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="searchRangeMachine" class="btn btn-primary w-100" disabled>Filter Hours</button>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm p-4 mt-4">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Start Time</th><th>End Time</th><th>Hours Used</th>
+            </tr>
+          </thead>
+          <tbody id="machineOverviewTable">
+            <!-- A JS fetch will fill out this table -->
+          </tbody>
+        </table>
+        <table class="table table-striped mb-0 mt-4">
+          <thead>
+            <tr>
+              <th>Total Hours Used</th>
+            </tr>
+          </thead>
+          <tbody id="machineTotalTable">
             <!-- A JS fetch will fill out this table (JS is such a nice dude doing all this work for us) -->
           </tbody>
         </table>

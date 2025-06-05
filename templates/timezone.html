@@ -60,7 +60,7 @@
       aria-labelledby="tab-timezone">
       <div class="row mt-4 mb-2">
         <div class="col d-flex align-items-center justify-content-center">
-          <div class="card mt-4 h-100 img-fluid" style="max-width: 300px; height: 120px; display: inline-block; object-fit: cover;">
+          <div class="card mt-4 h-100 img-fluid shadow-sm p-4">
             <img src="{{ url_for('static', filename='tzlogo2.png') }}" class="card-img-top" alt="...">
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">Start your working day</h5>
@@ -252,7 +252,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 </script>
 
 <script>
-  console.log("java er undlæst");
+  console.log("java er indlæst");
 
   const startBtn = document.getElementById("startBtn");
   const statusMsg = document.getElementById("statusmsg");
@@ -299,7 +299,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     .then (data =>{
       if (data.status === "success" || data.status === "great success") {
         if (data.action === "start") {
-          startBtn.innerText = "stop lorte dagen";
+          startBtn.innerText = "stop din dejlige dag";
           startBtn.classList.replace("btn-primary", "btn-danger");
           statusMsg.innerText = data.message;
           working = true;

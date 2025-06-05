@@ -654,6 +654,10 @@ def get_user_times():
 def get_times():
     print(f"Times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
     
+    # Bonk 'em out if they're not an org admin
+    if not current_user.is_org_admin:
+        return render_template('forbidden.html')
+
     from_date_gen = request.args.get('dateFromGeneral')
     to_date_gen = request.args.get('dateToGeneral')
 
@@ -795,6 +799,14 @@ def get_times():
         flash('Invalid request, please contact support', 'danger')
         print("Invalid request in org admin API. If this prints, something is wrong, and your code is poop. Give up and live under a bridge :(")
         return redirect(url_for('dashboard'))
+
+# FILL THIS OUT ASAP SO WE CAN LOOK AT THE SHINY MACHINES
+# API Route for getting machine usage times for the org admin dashboard
+@app.route('/api/times/machine', methods=['GET'])
+@login_required
+@admin_required
+def get_machine_times():
+    pass
 
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
@@ -969,7 +981,7 @@ def timezone_user_api():
             print(f' END time updated for user: {user} at {utc_dt}')
             return jsonify({
                 "status": "success",
-                "message": f"DIN lorte dag er slut og registreret {user} at {utc_dt} og hvis du vil starte den igen tryk start dagen igen",
+                "message": f"DIN dag er slut og registreret {user} at {utc_dt} og hvis du vil starte den igen tryk start dagen igen",
                 "action" : "stop"
             })
         else: 
@@ -981,7 +993,7 @@ def timezone_user_api():
             print(f"start time skabt for user: {user} kl. {utc_dt}")
             return jsonify({
                 "status": "great success",
-                "message": f" btw din tid er startet {user} kl {utc_dt}",
+                "message": f"din tid er startet {user} kl {utc_dt}",
                 "action": "start"
             })
     except Exception as e:
