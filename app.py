@@ -4,7 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.serving import WSGIRequestHandler
-from cryptography.fernet import Fernet
+#from cryptography.fernet import Fernet
 #from flask_cors import CORS
 from functools import wraps
 from datetime import datetime, timezone, timedelta
@@ -124,6 +124,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+"""
 #Load the Fernet key from the environment variable (saved in .bashrc, don't tell anyone shhh)
 FERNET_KEY = os.environ.get('FERNET_KEY')
 if not FERNET_KEY:
@@ -134,6 +135,7 @@ else:
     print("We lucky :D")
     # DON'T DO THIS PRINT IN PROD, U GET FIRED >:|
     print(f"Fernet key: {FERNET_KEY}")
+"""
 
 ############################################# WEBSITE ROUTES BELOW #############################################
 
@@ -246,14 +248,20 @@ def dashboard():
                                 WHERE role = "employee"                               
                                 AND deleted_at IS NULL
                                 ORDER BY name ASC""").fetchall()
+            machines = conn.execute("""SELECT id, name, type, dom, dop, pp FROM machines 
+                                    ORDER BY id ASC""").fetchall()
+            conn.commit()
         except Exception as e:
             print(f"Database error: {e}")
             flash('Database error, please contact support', 'danger')
             return redirect(url_for('index'))
         finally:
             conn.close()
+        print(users)
+        users = [dict(user) for user in users]
+        machines = [dict(machine) for machine in machines]
 
-        return render_template("orgadmin_dashboardV2.html", users=users)
+        return render_template("orgadmin_dashboardV2.html", users=users, machines=machines)
     
     elif current_user.is_authenticated and current_user.is_sysadmin:
         try:
@@ -674,7 +682,7 @@ def get_times():
     if from_date_gen and to_date_gen and not user:
         try:
             conn = db_connect()
-            # Rewrite logic later to not include root accounts, currently using the root employee for testing
+            # Rewrite logic later to NOT include root accounts, currently using the root employee for testing
             # WHERE lastname != "root"
             users = conn.execute("""SELECT username, name, lastname FROM users 
                                 WHERE role = "employee"                               
@@ -807,8 +815,89 @@ def get_times():
 @admin_required
 def get_machine_times():
     print(f"Machine times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+    
+    # Bonk 'em out if they're not an org admin
+    if not current_user.is_org_admin:
+        return render_template('forbidden.html')
 
-    return jsonify({"message": "This API endpoint is not implemented yet."}), 501
+    from_date_gen = request.args.get('dateFromGeneral')
+    to_date_gen = request.args.get('dateToGeneral')
+
+    from_date_machine = request.args.get('dateFromMachine')
+    to_date_machine = request.args.get('dateToMachine')
+    machineId = request.args.get('machineId')
+
+    print(f"From date: {from_date_gen}, To date: {to_date_gen}")
+    print(f"From date machine: {from_date_machine}, To date machine: {to_date_machine}")
+    print(f"User: {machineId}")
+
+    if from_date_gen and to_date_gen and not machineId:
+        try:
+            conn = db_connect()
+            times = conn.execute("""SELECT machine, 
+                                 TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_used
+                                 FROM timeentries
+                                 WHERE DATE(start_time) BETWEEN ? AND ?
+                                 AND end_time IS NOT NULL
+                                 AND machine IS NOT NULL
+                                 GROUP BY machine
+                                 ORDER BY machine""", (from_date_gen, to_date_gen)).fetchall()
+            conn.commit()
+        except Exception as e:
+            print(f"Database error: {e}")
+        finally:
+            conn.close()
+
+        try:
+            times = [dict(time) for time in times]
+        except Exception as e:
+            print(e)
+            times = dict(times)
+        print(times)
+
+        return jsonify(times), 200
+    
+    elif machineId:
+        try:
+            conn = db_connect()
+            machine = conn.execute("""SELECT name FROM machines
+                                   WHERE id = ?""", (machineId)).fetchone()
+            machine = dict(machine)
+            print(machine)
+            times = conn.execute("""SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS used
+                                    FROM timeentries
+                                    WHERE end_time IS NOT NULL
+                                    AND DATE(start_time) BETWEEN ? AND ?
+                                    AND machine IS NOT NULL
+                                    AND machine = ?""", (from_date_machine, to_date_machine, machine["name"])).fetchall()
+            total_times = conn.execute("""SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_used
+                                 FROM timeentries
+                                 WHERE machine = ?
+                                 AND DATE(start_time) BETWEEN ? AND ?
+                                 AND end_time IS NOT NULL
+                                 AND machine IS NOT NULL
+                                 GROUP BY machine""", (machine["name"], from_date_machine, to_date_machine)).fetchone()
+            print(total_times)
+            conn.commit()
+        except Exception as e:
+            print(f"Database error: {e}")
+        finally:
+            conn.close()
+
+        try:
+            times = [dict(time) for time in times]
+        except Exception as e:
+            print(e)
+            times = dict(times)
+
+        for time in times:
+                time["used"] = time["used"][:-4][12:]
+        print(times)
+
+        total_times = dict(total_times)
+        print(total_times)
+
+        return jsonify([times, [total_times]]), 200
 
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
