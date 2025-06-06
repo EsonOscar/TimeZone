@@ -806,7 +806,9 @@ def get_times():
 @login_required
 @admin_required
 def get_machine_times():
-    pass
+    print(f"Machine times API endpoint hit, requested by user: [{current_user.username}] ({current_user.name} {current_user.lastname})")
+
+    return jsonify({"message": "This API endpoint is not implemented yet."}), 501
 
 # API Route for changing the user password
 @app.route('/api/change_password', methods=['POST'])
