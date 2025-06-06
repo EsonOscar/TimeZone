@@ -153,10 +153,10 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Name</th><th>Hours Used</th>
+              <th>Name</th><th>Time Used</th>
             </tr>
           </thead>
-          <tbody id="generalMachineOverviewTable">
+          <tbody id="generalOverviewTableMachine">
             <!-- A JS fetch will fill out this table -->
           </tbody>
         </table>
@@ -173,8 +173,8 @@
             <label for="machineSelectOverview" class="form-label">Select Machine:</label>
             <select id="machineSelectOverview" class="form-select">
               <option value="">- Select Machine -</option>
-              {% for u in users %}
-                <option value="{{ u.id }}">{{ u.name }} {{ u.lastname }}</option>
+              {% for m in machines %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -197,7 +197,7 @@
         <table class="table table-striped mb-0">
           <thead>
             <tr>
-              <th>Start Time</th><th>End Time</th><th>Hours Used</th>
+              <th>Start Time</th><th>End Time</th><th>Time Used</th>
             </tr>
           </thead>
           <tbody id="machineOverviewTable">
@@ -207,7 +207,7 @@
         <table class="table table-striped mb-0 mt-4">
           <thead>
             <tr>
-              <th>Total Hours Used</th>
+              <th>Total Time Used</th>
             </tr>
           </thead>
           <tbody id="machineTotalTable">
@@ -218,9 +218,10 @@
     </div>
 </div>
 
+<!-- JS Relating to all Employee functions in this HTML file -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // General Overview
+  // General Employee Overview
   const genBtn     = document.getElementById('searchRangeGeneral');
   const genFrom    = document.getElementById('dateFromGeneral');
   const genTo      = document.getElementById('dateToGeneral');
@@ -253,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (!data || !Array.isArray(data)) {
-        empTbody.innerHTML    = '';
+        genTbody.innerHTML    = '';
         return;
       }
 
@@ -350,6 +351,147 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${r.overtime_percentage}%</td>
         `;
         empTbodyTwo.appendChild(tr);
+        
+      });
+    
+    //upsi lil error uwu
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+
+});
+</script>
+
+<!-- JS Relating to all Machine functions in this HTML file -->
+<!-- I did a cheeky and copy pasted the employee JS bwahahaha -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // General Employee Overview
+  const genBtn     = document.getElementById('searchRangeGeneralMachine');
+  const genFrom    = document.getElementById('dateFromGeneralMachine');
+  const genTo      = document.getElementById('dateToGeneralMachine');
+  const genTbody   = document.getElementById('generalOverviewTableMachine');
+
+  genFrom.value = '';
+  genTo.value   = '';
+
+  genBtn.disabled = true;
+
+  function updateGenButton() {
+    const f = genFrom.value
+    const t = genTo.value;
+    genBtn.disabled = !(f && t && new Date(t) > new Date(f));
+  }
+  genFrom.addEventListener('input', updateGenButton);
+  genTo.addEventListener('input',   updateGenButton);
+  updateGenButton();
+
+  genBtn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy, remember this for later, also maybe fix all your old crap where you don't have it since it took you two weeks to find it >:|
+    e.preventDefault();  
+
+    
+    const qs   = new URLSearchParams({ dateFromGeneral: genFrom.value, dateToGeneral: genTo.value });
+
+    try {
+      const res  = await fetch(`/api/times/machine?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+
+      if (!data || !Array.isArray(data)) {
+        genTbody.innerHTML    = '';
+        return;
+      }
+
+      // clear old rows
+      genTbody.innerHTML = '';
+
+      // populate with new cool data
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.machine}</td>
+          <td>${r.total_used}</td>
+        `;
+        genTbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error('Failed to load overview:', err);
+      alert('Error loading data — see console for details.');
+    }
+  });
+
+  // Employee Specific Overview
+  const machineBtn      = document.getElementById('searchRangeMachine');
+  const machineFrom     = document.getElementById('dateFromMachine');
+  const machineTo       = document.getElementById('dateToMachine');
+  const machineUser     = document.getElementById('machineSelectOverview');
+  const machineTbody    = document.getElementById('machineOverviewTable');
+  const machineTbodyTwo = document.getElementById('machineTotalTable');
+
+  machineFrom.value = '';
+  machineTo.value   = '';
+  machineUser.value = '';
+
+  machineBtn.disabled = true;
+
+  function updateEmpButton() {
+    const f = machineFrom.value
+    const t = machineTo.value
+    const u = machineUser.value;
+    machineBtn.disabled = !(u && f && t && new Date(t) > new Date(f));
+    console.log(`empUser: ${u}, empFrom: ${f}, empTo: ${t}, disabled: ${machineBtn.disabled}`);
+  }
+
+  machineUser.addEventListener('change', updateEmpButton);
+  machineFrom.addEventListener('input',  updateEmpButton);
+  machineTo.addEventListener('input',    updateEmpButton);
+  updateEmpButton();
+
+  machineBtn.addEventListener('click', async e => {
+    // don’t reload the whole page ya dummy
+    e.preventDefault();  
+    
+    const qs   = new URLSearchParams({ dateFromMachine: machineFrom.value, dateToMachine: machineTo.value, machineId: machineUser.value });
+
+    try {
+      const res  = await fetch(`/api/times/machine?${qs.toString()}`, { method: 'GET' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      console.log(data);
+      console.log(`data[0]: ${data[0]}`);
+      console.log(`data[1]: ${data[1]}`);
+
+      if (!data || !Array.isArray(data) || data[1] == null) {
+        machineTbodyTwo.innerHTML    = '';
+        return;
+      }
+
+      // clear old rows
+      machineTbody.innerHTML = '';
+      machineTbodyTwo.innerHTML = '';
+
+      // populate with new cool data
+      data[0].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.start_time}</td>
+          <td>${r.end_time}</td>
+          <td>${r.used}</td>
+        `;
+        machineTbody.appendChild(tr);
+        
+      });
+
+     // Populate second table with even cooler data (intense!)
+      data[1].forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.total_used}</td>
+        `;
+        machineTbodyTwo.appendChild(tr);
         
       });
     
