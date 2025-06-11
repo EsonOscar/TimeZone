@@ -174,7 +174,7 @@ else:
     print(f"Fernet key: {FERNET_KEY}")
 
 
-############################################# WEBSITE ROUTES BELOW #############################################
+# ############################################ WEBSITE ROUTES BELOW ############################################ #
 
 
 # Index
@@ -214,16 +214,16 @@ def dashboard():
             conn = db_connect()
             times = conn.execute(
                 """SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
-                        CASE 
-                        WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
-                        THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) 
+                        CASE
+                        WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00"
+                        THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute"))
                         ELSE "+0000-00-00 00:00:00"
                         END AS overtime,
                         ROUND(CASE
                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
                                 THEN 0
                                 ELSE
-                                (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                (strftime("%s", end_time) - strftime("%s", start_time) - 60)
                                 * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
                                 END, 2)
                                 AS overtime_percentage
@@ -299,13 +299,13 @@ def dashboard():
             # Add back later: AND lastname != "root"
             # Currently using the root employee for testing
             users = conn.execute(
-                """SELECT id, username, name, lastname FROM users 
-                    WHERE role = "employee"                               
+                """SELECT id, username, name, lastname FROM users
+                    WHERE role = "employee"
                     AND deleted_at IS NULL
                     ORDER BY name ASC"""
             ).fetchall()
             machines = conn.execute(
-                """SELECT id, name, type, dom, dop, pp FROM machines 
+                """SELECT id, name, type, dom, dop, pp FROM machines
                     ORDER BY id ASC"""
             ).fetchall()
             conn.commit()
@@ -352,8 +352,8 @@ def admin():
     if current_user.is_authenticated and current_user.is_org_admin:
         conn = db_connect()
         users = conn.execute(
-            """SELECT * FROM users 
-                WHERE role = "employee" 
+            """SELECT * FROM users
+                WHERE role = "employee"
                 AND lastname != "root"
                 AND deleted_at IS NULL
                 ORDER BY role DESC"""
@@ -364,22 +364,22 @@ def admin():
         conn = db_connect()
 
         users = conn.execute(
-            """SELECT * FROM users 
+            """SELECT * FROM users
                 WHERE lastname != "root"
-                AND deleted_at IS NULL 
+                AND deleted_at IS NULL
                 ORDER BY role DESC"""
         ).fetchall()
 
         deleted_users = conn.execute(
-            """SELECT * FROM users 
+            """SELECT * FROM users
                 WHERE lastname != "root"
-                AND deleted_at IS NOT NULL 
+                AND deleted_at IS NOT NULL
                 ORDER BY role DESC"""
         ).fetchall()
 
         if current_user.id == 1:
             root_users = conn.execute(
-                """SELECT * FROM users 
+                """SELECT * FROM users
                     WHERE lastname = "root"
                     AND deleted_at IS NULL
                     ORDER BY role DESC"""
@@ -480,7 +480,7 @@ def login():
         try:
             conn = db_connect()
             row = conn.execute(
-                """SELECT * FROM users 
+                """SELECT * FROM users
                     WHERE username = ?
                     """,
                 (username,),
@@ -559,7 +559,7 @@ def serve_sw():
     )
 
 
-############################################# API ENDPOINTS BELOW ##############################################
+# ############################################ API ENDPOINTS BELOW ############################################# #
 
 
 # API route for marking a message as read
@@ -649,8 +649,8 @@ def get_read_messages():
         try:
             conn = db_connect()
             messages = conn.execute(
-                """SELECT * FROM contact 
-                    WHERE is_read = 1 
+                """SELECT * FROM contact
+                    WHERE is_read = 1
                     ORDER BY timestamp DESC"""
             ).fetchall()
             conn.commit()
@@ -684,8 +684,8 @@ def get_read_messages():
         try:
             conn = db_connect()
             messages = conn.execute(
-                """SELECT * FROM contact 
-                    WHERE is_read = 1 
+                """SELECT * FROM contact
+                    WHERE is_read = 1
                     AND timestamp BETWEEN ? AND ?
                     ORDER BY timestamp DESC""",
                 (date_from, date_to),
@@ -734,15 +734,15 @@ def get_user_times():
             conn = db_connect()
             times = conn.execute(
                 """SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
-                         CASE 
-                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                         CASE
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00"
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
                          END AS overtime,
                          ROUND(CASE
                                  WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
                                  THEN 0
                                  ELSE
-                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60)
                                     * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
                                     END, 2)
                                  AS overtime_percentage
@@ -770,7 +770,7 @@ def get_user_times():
                                                     THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                     ELSE 0
                                             END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
-                                    END, 2) 
+                                    END, 2)
                             AS overtime_percentage
                     FROM timeentries
                     WHERE user = ?
@@ -835,8 +835,8 @@ def get_times():
             # Rewrite logic later to NOT include root accounts, currently using the root employee for testing
             # WHERE lastname != "root"
             users = conn.execute(
-                """SELECT username, name, lastname FROM users 
-                    WHERE role = "employee"                               
+                """SELECT username, name, lastname FROM users
+                    WHERE role = "employee"
                     AND deleted_at IS NULL
                     ORDER BY name ASC"""
             ).fetchall()
@@ -894,15 +894,15 @@ def get_times():
             # Logic in these makes my head hurt, but it works, fricken finally
             times = conn.execute(
                 """SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
-                         CASE 
-                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                         CASE
+                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00"
                             THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
                          END AS overtime,
                          ROUND(CASE
                                  WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
                                  THEN 0
                                  ELSE
-                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60)
                                     * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
                                     END, 2)
                                  AS overtime_percentage
@@ -930,7 +930,7 @@ def get_times():
                                                     THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                     ELSE 0
                                             END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
-                                    END, 2) 
+                                    END, 2)
                             AS overtime_percentage
                     FROM timeentries
                     WHERE user = ?
@@ -1006,7 +1006,7 @@ def get_machine_times():
         try:
             conn = db_connect()
             times = conn.execute(
-                """SELECT machine, 
+                """SELECT machine,
                             TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_used
                     FROM timeentries
                     WHERE DATE(start_time) BETWEEN ? AND ?
@@ -1095,15 +1095,15 @@ def change_password():
     lastname = current_user.lastname
 
     if lastname == "root":
-        print(f"An attempt has been made to change the password for the root user.")
-        flash(f"You cannot change the password for a root user.", "danger")
+        print("An attempt has been made to change the password for the root user.")
+        flash("You cannot change the password for a root user.", "danger")
         return redirect(url_for("user"))
 
     try:
         conn = db_connect()
         old_password = conn.execute(
-            """SELECT password 
-                FROM users 
+            """SELECT password
+                FROM users
                 WHERE username = ?
                 """,
             (username,),
@@ -1202,9 +1202,9 @@ def timezone_machine_api():
         machine = str(machine[0])
         print(f"Machine name: {machine}")
         time_data = conn.execute(
-            """SELECT * FROM timeentries 
-                WHERE machine = ? 
-                AND DATE(start_time) = DATE(?) 
+            """SELECT * FROM timeentries
+                WHERE machine = ?
+                AND DATE(start_time) = DATE(?)
                 ORDER BY id DESC LIMIT 1""",
             (machine, utc_dt),
         ).fetchone()
@@ -1231,9 +1231,9 @@ def timezone_machine_api():
             # If the machine has no end time today, update entry with end time
             if not ended:
                 conn.execute(
-                    """UPDATE timeentries SET end_time = ? 
-                        WHERE machine = ? 
-                        AND DATE(start_time) = DATE(?) 
+                    """UPDATE timeentries SET end_time = ?
+                        WHERE machine = ?
+                        AND DATE(start_time) = DATE(?)
                         AND id = ?""",
                     (utc_dt, machine, utc_dt, time_data["id"]),
                 )
@@ -1271,9 +1271,9 @@ def timezone_user_api():
     conn = db_connect()
     try:
         cursor = conn.execute(
-            """SELECT id FROM timeentries 
-                WHERE user = ? 
-                AND end_time IS NULL 
+            """SELECT id FROM timeentries
+                WHERE user = ?
+                AND end_time IS NULL
                 ORDER BY start_time DESC LIMIT 1""",
             (user,),
         )
@@ -1339,8 +1339,8 @@ def admin_create_user():
             flash("All fields are required.", "danger")
             return redirect(url_for("admin"))
         elif lastname == "root":
-            print(f"An attempt has been made to create a user with the root lastname.")
-            flash(f'You canot create a user with the lastname "root".', "danger")
+            print("An attempt has been made to create a user with the root lastname.")
+            flash('You canot create a user with the lastname "root".', "danger")
             return redirect(url_for("admin"))
         elif current_user.role == "org_admin" and (
             role == "sysadmin" or role == "org_admin"
@@ -1354,8 +1354,8 @@ def admin_create_user():
         conn = db_connect()
         try:
             conn.execute(
-                """INSERT INTO users 
-                    (username, password, name, lastname, email, role, paytype, pay, created_at) 
+                """INSERT INTO users
+                    (username, password, name, lastname, email, role, paytype, pay, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (username, password, name, lastname, email, role, paytype, pay, utc_dt),
             )
@@ -1437,7 +1437,7 @@ def update(user_id):
         print(
             f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})."
         )
-        print(f"The incident has been logged.\n")
+        print("The incident has been logged.\n")
         flash(
             f'Attempt to modify the root "{username}" user was made at {utc_dt}.',
             "danger",
@@ -1454,12 +1454,12 @@ def update(user_id):
         print(
             f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})"
         )
-        print(f"The incident has been logged.\n")
+        print("The incident has been logged.\n")
 
         # If the active user is root, log them out
         if current_user.lastname == "root":
             logout_user()
-            flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
+            flash("DET MÅ DU IKKE! FY FY FY FY!", "danger")
             return redirect(url_for("login"))
 
         # If the active user is not root, teach them a lesson
@@ -1476,11 +1476,11 @@ def update(user_id):
         finally:
             conn.close()
             logout_user()
-            flash(f"DET MÅ DU IKKE! FY FY FY FY!", "danger")
+            flash("DET MÅ DU IKKE! FY FY FY FY!", "danger")
         return redirect(url_for("login"))
 
     # Only root sysadmin can freely modify all sysadmin users, sysadmin users can only modify themselves
-    ################## LOOK INTO THIS, LOGIC ISN'T SOUND ##################
+    # LOOK INTO THIS, LOGIC ISN'T SOUND
     elif user["role"] == "sysadmin" and current_user.id != 1:
         if user["role"] == "sysadmin" and current_user.id != user_id:
             print(f"\nWARNING ({utc_dt}):")
@@ -1488,9 +1488,9 @@ def update(user_id):
             print(
                 f"Attempt was made by user: [{current_user.username}] ({current_user.name} {current_user.lastname})"
             )
-            print(f"The incident has been logged.\n")
+            print("The incident has been logged.\n")
             flash(
-                f"SysAdmins users can only be modified by root, or by the account owner.",
+                "SysAdmins users can only be modified by root, or by the account owner.",
                 "warning",
             )
 
@@ -1556,11 +1556,11 @@ def delete(user_id):
         return redirect(url_for("admin"))
     # Do not allow deletion of the user making the request
     elif user_id == current_user.id:
-        flash(f"Don't delete yourself, you have so much to live for!", "danger")
+        flash("Don't delete yourself, you have so much to live for!", "danger")
         return redirect(url_for("admin"))
     # Do not allow deletion of sysadmin users, unless done by root sysadmin
     elif user["role"] == "sysadmin" and current_user.id != 1:
-        flash(f"SysAdmin users can't be deleted.", "danger")
+        flash("SysAdmin users can't be deleted.", "danger")
         return redirect(url_for("admin"))
 
     else:
@@ -1596,7 +1596,11 @@ def restore(user_id):
 
     try:
         conn = db_connect()
-        user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        user = conn.execute(
+            """SELECT * FROM users
+                WHERE id = ?""",
+            (user_id,),
+        ).fetchone()
         user = dict(user)
     except Exception as e:
         print(f"Database error: {e}")
@@ -1629,7 +1633,7 @@ def restore(user_id):
 # API Route for storing information from the contact form
 @app.route("/api/contact", methods=["POST"])
 def contactAPI():
-    print(f"User contact API endpoint hit")
+    print("User contact API endpoint hit")
     email = request.form.get("email", "").strip()
     message = request.form.get("message", "").strip()
     ip = request.remote_addr
@@ -1640,9 +1644,9 @@ def contactAPI():
         conn = db_connect()
         try:
             row = conn.execute(
-                """SELECT * FROM contact 
-                    WHERE email = ? 
-                    AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" 
+                """SELECT * FROM contact
+                    WHERE email = ?
+                    AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00"
                     ORDER BY id DESC LIMIT 1""",
                 (email, utc_dt),
             ).fetchone()
@@ -1665,14 +1669,14 @@ def contactAPI():
     print(f"{email}, {message}")
 
     if not email or not message:
-        print(f"Both fields are required!")
+        print("Both fields are required!")
         flash("Both fields are required!", "danger")
         return redirect(url_for("contact"))
     elif len(message) > 150:
         print("Message is too long!")
-        flash("Message is too long, please use less than 150 characters.", "warning")
+        flash("Message is too long,", " please use less than 150 characters." "warning")
         return redirect(url_for("contact"))
-    elif row != None:
+    elif row is not None:
         print(f"User {email} tried to spam the contact form!")
         flash("Gotta wait buddy hehe", "danger")
         return redirect(url_for("contact"))
@@ -1682,7 +1686,8 @@ def contactAPI():
         print("Updating database...")
         conn = db_connect()
         conn.execute(
-            """INSERT INTO contact (email, message, ip, timestamp) VALUES (?,?,?,?)""",
+            """INSERT INTO contact (email, message, ip, timestamp)
+                VALUES (?,?,?,?)""",
             (email, message, ip, utc_dt),
         )
         conn.commit()
@@ -1697,9 +1702,12 @@ def contactAPI():
     return redirect(url_for("contact"))
 
 
-################################################### CONFIG #####################################################
+# ################################################## CONFIG #################################################### #
 
-# Config, app runs locally on port 5000. NGINX proxies outisde requests to this port, and sends the apps response back to the client.
+# Config, app runs locally on port 5000.
+# NGINX proxies outisde requests to this port,
+# and sends the apps response back to the client.
+
 if __name__ == "__main__":
     app.run(
         debug=True, port=5000, host="127.0.0.1", request_handler=ProxiedRequestHandler
