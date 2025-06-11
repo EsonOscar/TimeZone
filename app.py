@@ -214,51 +214,51 @@ def dashboard():
             conn = db_connect()
             times = conn.execute(
                 """SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
-                         CASE 
-                            WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
-                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) 
-                            ELSE "+0000-00-00 00:00:00"
-                         END AS overtime,
-                         ROUND(CASE
-                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
-                                 THEN 0
-                                 ELSE
-                                    (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
-                                    * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
-                                    END, 2)
-                                 AS overtime_percentage
-                         FROM timeentries
-                         WHERE user = ?
-                         AND start_time >= DATE("now", "start of month")
-                         AND end_time IS NOT NULL
-                         AND machine IS NULL
-                         ORDER BY start_time ASC""",
+                        CASE 
+                        WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00" 
+                        THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) 
+                        ELSE "+0000-00-00 00:00:00"
+                        END AS overtime,
+                        ROUND(CASE
+                                WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                THEN 0
+                                ELSE
+                                (strftime("%s", end_time) - strftime("%s", start_time) - 60) 
+                                * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
+                                END, 2)
+                                AS overtime_percentage
+                    FROM timeentries
+                    WHERE user = ?
+                    AND start_time >= DATE("now", "start of month")
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    ORDER BY start_time ASC""",
                 (user,),
             ).fetchall()
 
             total_times = conn.execute(
                 """SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
-                                        TIME(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END), "unixepoch") AS total_overtime,
-                                        ROUND(CASE
-                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
-                                                THEN 0
-                                                ELSE
-                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
-                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                             ELSE 0
-                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
-                                                END, 2)
-                                        AS overtime_percentage
-                                        FROM timeentries
-                                        WHERE user = ?
-                                        AND start_time >= DATE("now", "start of month")
-                                        AND end_time IS NOT NULL
-                                        AND machine IS NULL
-                                        GROUP BY user""",
+                            TIME(SUM(CASE
+                                    WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                    THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                    ELSE 0
+                                END), "unixepoch") AS total_overtime,
+                            ROUND(CASE
+                                    WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                    THEN 0
+                                    ELSE
+                                        SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                    THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                    ELSE 0
+                                            END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                    END, 2)
+                            AS overtime_percentage
+                    FROM timeentries
+                    WHERE user = ?
+                    AND start_time >= DATE("now", "start of month")
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    GROUP BY user""",
                 (user,),
             ).fetchone()
 
@@ -300,13 +300,13 @@ def dashboard():
             # Currently using the root employee for testing
             users = conn.execute(
                 """SELECT id, username, name, lastname FROM users 
-                                WHERE role = "employee"                               
-                                AND deleted_at IS NULL
-                                ORDER BY name ASC"""
+                    WHERE role = "employee"                               
+                    AND deleted_at IS NULL
+                    ORDER BY name ASC"""
             ).fetchall()
             machines = conn.execute(
                 """SELECT id, name, type, dom, dop, pp FROM machines 
-                                    ORDER BY id ASC"""
+                    ORDER BY id ASC"""
             ).fetchall()
             conn.commit()
         except Exception as e:
@@ -328,8 +328,8 @@ def dashboard():
             conn = db_connect()
             messages = conn.execute(
                 """SELECT * FROM contact
-                                    WHERE is_read = 0
-                                    ORDER BY timestamp ASC"""
+                    WHERE is_read = 0
+                    ORDER BY timestamp ASC"""
             ).fetchall()
             conn.commit()
             messages = [dict(message) for message in messages]
@@ -353,10 +353,10 @@ def admin():
         conn = db_connect()
         users = conn.execute(
             """SELECT * FROM users 
-                             WHERE role = "employee" 
-                             AND lastname != "root"
-                             AND deleted_at IS NULL
-                             ORDER BY role DESC"""
+                WHERE role = "employee" 
+                AND lastname != "root"
+                AND deleted_at IS NULL
+                ORDER BY role DESC"""
         ).fetchall()
         conn.close()
         return render_template("orgadmin_admin.html", users=users)
@@ -365,24 +365,24 @@ def admin():
 
         users = conn.execute(
             """SELECT * FROM users 
-                             WHERE lastname != "root"
-                             AND deleted_at IS NULL 
-                             ORDER BY role DESC"""
+                WHERE lastname != "root"
+                AND deleted_at IS NULL 
+                ORDER BY role DESC"""
         ).fetchall()
 
         deleted_users = conn.execute(
             """SELECT * FROM users 
-                             WHERE lastname != "root"
-                             AND deleted_at IS NOT NULL 
-                             ORDER BY role DESC"""
+                WHERE lastname != "root"
+                AND deleted_at IS NOT NULL 
+                ORDER BY role DESC"""
         ).fetchall()
 
         if current_user.id == 1:
             root_users = conn.execute(
                 """SELECT * FROM users 
-                                      WHERE lastname = "root"
-                                      AND deleted_at IS NULL
-                                      ORDER BY role DESC"""
+                    WHERE lastname = "root"
+                    AND deleted_at IS NULL
+                    ORDER BY role DESC"""
             ).fetchall()
 
             count = 0
@@ -431,14 +431,14 @@ def time_zone():
             # Get the list of machines from the database
             machines = conn.execute(
                 """SELECT id, name, uuid FROM machines
-                                    ORDER BY id"""
+                    ORDER BY id"""
             ).fetchall()
             # Get the list of active machines from the database
             active_machines = conn.execute(
                 """SELECT machine FROM timeentries
-                                            WHERE active = 1
-                                            AND MACHINE IS NOT NULL
-                                            ORDER BY id"""
+                    WHERE active = 1
+                    AND MACHINE IS NOT NULL
+                    ORDER BY id"""
             ).fetchall()
             active_machines = [str(machine[0]) for machine in active_machines]
             if len(active_machines) == 0:
@@ -481,8 +481,8 @@ def login():
             conn = db_connect()
             row = conn.execute(
                 """SELECT * FROM users 
-                               WHERE username = ?
-                               """,
+                    WHERE username = ?
+                    """,
                 (username,),
             ).fetchone()
         except Exception as e:
@@ -650,8 +650,8 @@ def get_read_messages():
             conn = db_connect()
             messages = conn.execute(
                 """SELECT * FROM contact 
-                                    WHERE is_read = 1 
-                                    ORDER BY timestamp DESC"""
+                    WHERE is_read = 1 
+                    ORDER BY timestamp DESC"""
             ).fetchall()
             conn.commit()
             messages = [dict(message) for message in messages]
@@ -685,9 +685,9 @@ def get_read_messages():
             conn = db_connect()
             messages = conn.execute(
                 """SELECT * FROM contact 
-                                    WHERE is_read = 1 
-                                    AND timestamp BETWEEN ? AND ?
-                                    ORDER BY timestamp DESC""",
+                    WHERE is_read = 1 
+                    AND timestamp BETWEEN ? AND ?
+                    ORDER BY timestamp DESC""",
                 (date_from, date_to),
             ).fetchall()
             conn.commit()
@@ -746,38 +746,38 @@ def get_user_times():
                                     * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
                                     END, 2)
                                  AS overtime_percentage
-                         FROM timeentries
-                         WHERE user = ?
-                         AND DATE(start_time) BETWEEN ? AND ?
-                         AND end_time IS NOT NULL
-                         AND machine IS NULL
-                         ORDER BY start_time ASC""",
+                    FROM timeentries
+                    WHERE user = ?
+                    AND DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    ORDER BY start_time ASC""",
                 (user, from_date, to_date),
             ).fetchall()
 
             total_times = conn.execute(
                 """SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
-                                        TIME(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END), "unixepoch") AS total_overtime,
-                                        ROUND(CASE
-                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
-                                                THEN 0
-                                                ELSE
-                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
-                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                             ELSE 0
-                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
-                                                END, 2) 
-                                        AS overtime_percentage
-                                        FROM timeentries
-                                        WHERE user = ?
-                                        AND DATE(start_time) BETWEEN ? AND ?
-                                        AND end_time IS NOT NULL
-                                        AND machine IS NULL
-                                        GROUP BY user""",
+                            TIME(SUM(CASE
+                                    WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                    THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                    ELSE 0
+                                END), "unixepoch") AS total_overtime,
+                            ROUND(CASE
+                                    WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                    THEN 0
+                                    ELSE
+                                        SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                    THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                    ELSE 0
+                                            END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                    END, 2) 
+                            AS overtime_percentage
+                    FROM timeentries
+                    WHERE user = ?
+                    AND DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    GROUP BY user""",
                 (user, from_date, to_date),
             ).fetchone()
             conn.commit()
@@ -836,34 +836,34 @@ def get_times():
             # WHERE lastname != "root"
             users = conn.execute(
                 """SELECT username, name, lastname FROM users 
-                                WHERE role = "employee"                               
-                                AND deleted_at IS NULL
-                                ORDER BY name ASC"""
+                    WHERE role = "employee"                               
+                    AND deleted_at IS NULL
+                    ORDER BY name ASC"""
             ).fetchall()
             times = conn.execute(
                 """SELECT user,
-                                        TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
-                                        TIME(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                        TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
+                        TIME(SUM(CASE
+                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                ELSE 0
+                            END), "unixepoch") AS total_overtime,
+                        ROUND(CASE
+                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                THEN 0
+                                ELSE
+                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
                                                 THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
                                                 ELSE 0
-                                            END), "unixepoch") AS total_overtime,
-                                        ROUND(CASE
-                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
-                                                THEN 0
-                                                ELSE
-                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
-                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                             ELSE 0
-                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
-                                                END, 2)
-                                        AS overtime_percentage
-                                        FROM timeentries
-                                        WHERE DATE(start_time) BETWEEN ? AND ?
-                                        AND end_time IS NOT NULL
-                                        AND machine IS NULL
-                                        GROUP BY user
-                                        ORDER BY user""",
+                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                END, 2)
+                        AS overtime_percentage
+                    FROM timeentries
+                    WHERE DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    GROUP BY user
+                    ORDER BY user""",
                 (from_date_gen, to_date_gen),
             ).fetchall()
             conn.commit()
@@ -906,38 +906,38 @@ def get_times():
                                     * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
                                     END, 2)
                                  AS overtime_percentage
-                         FROM timeentries
-                         WHERE user = ?
-                         AND DATE(start_time) BETWEEN ? AND ?
-                         AND end_time IS NOT NULL
-                         AND machine IS NULL
-                         ORDER BY start_time ASC""",
+                    FROM timeentries
+                    WHERE user = ?
+                    AND DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    ORDER BY start_time ASC""",
                 (user["username"], from_date_emp, to_date_emp),
             ).fetchall()
 
             total_times = conn.execute(
                 """SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
-                                        TIME(SUM(CASE
-                                                WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
-                                                THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                ELSE 0
-                                            END), "unixepoch") AS total_overtime,
-                                        ROUND(CASE
-                                                WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
-                                                THEN 0
-                                                ELSE
-                                                    SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
-                                                             THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
-                                                             ELSE 0
-                                                        END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
-                                                END, 2) 
-                                        AS overtime_percentage
-                                        FROM timeentries
-                                        WHERE user = ?
-                                        AND DATE(start_time) BETWEEN ? AND ?
-                                        AND end_time IS NOT NULL
-                                        AND machine IS NULL
-                                        GROUP BY user""",
+                            TIME(SUM(CASE
+                                    WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
+                                    THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                    ELSE 0
+                                END), "unixepoch") AS total_overtime,
+                            ROUND(CASE
+                                    WHEN SUM(strftime("%s", end_time) - strftime("%s", start_time)) <= 60
+                                    THEN 0
+                                    ELSE
+                                        SUM(CASE WHEN (strftime("%s", end_time) - strftime("%s", start_time)) > (60)
+                                                    THEN (strftime("%s", end_time) - strftime("%s", start_time) - (60))
+                                                    ELSE 0
+                                            END) * 100.0 / SUM(strftime("%s", end_time) - strftime("%s", start_time))
+                                    END, 2) 
+                            AS overtime_percentage
+                    FROM timeentries
+                    WHERE user = ?
+                    AND DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NULL
+                    GROUP BY user""",
                 (user["username"], from_date_emp, to_date_emp),
             ).fetchone()
 
@@ -1007,13 +1007,13 @@ def get_machine_times():
             conn = db_connect()
             times = conn.execute(
                 """SELECT machine, 
-                                 TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_used
-                                 FROM timeentries
-                                 WHERE DATE(start_time) BETWEEN ? AND ?
-                                 AND end_time IS NOT NULL
-                                 AND machine IS NOT NULL
-                                 GROUP BY machine
-                                 ORDER BY machine""",
+                            TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_used
+                    FROM timeentries
+                    WHERE DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NOT NULL
+                    GROUP BY machine
+                    ORDER BY machine""",
                 (from_date_gen, to_date_gen),
             ).fetchall()
             conn.commit()
@@ -1043,21 +1043,21 @@ def get_machine_times():
             print(machine)
             times = conn.execute(
                 """SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS used
-                                    FROM timeentries
-                                    WHERE end_time IS NOT NULL
-                                    AND DATE(start_time) BETWEEN ? AND ?
-                                    AND machine IS NOT NULL
-                                    AND machine = ?""",
+                    FROM timeentries
+                    WHERE end_time IS NOT NULL
+                    AND DATE(start_time) BETWEEN ? AND ?
+                    AND machine IS NOT NULL
+                    AND machine = ?""",
                 (from_date_machine, to_date_machine, machine["name"]),
             ).fetchall()
             total_times = conn.execute(
                 """SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_used
-                                 FROM timeentries
-                                 WHERE machine = ?
-                                 AND DATE(start_time) BETWEEN ? AND ?
-                                 AND end_time IS NOT NULL
-                                 AND machine IS NOT NULL
-                                 GROUP BY machine""",
+                    FROM timeentries
+                    WHERE machine = ?
+                    AND DATE(start_time) BETWEEN ? AND ?
+                    AND end_time IS NOT NULL
+                    AND machine IS NOT NULL
+                    GROUP BY machine""",
                 (machine["name"], from_date_machine, to_date_machine),
             ).fetchone()
             print(total_times)
@@ -1102,9 +1102,10 @@ def change_password():
     try:
         conn = db_connect()
         old_password = conn.execute(
-            """SELECT password FROM users 
-                               WHERE username = ?
-                               """,
+            """SELECT password 
+                FROM users 
+                WHERE username = ?
+                """,
             (username,),
         ).fetchone()
         old_password = str(old_password[0])
@@ -1201,7 +1202,10 @@ def timezone_machine_api():
         machine = str(machine[0])
         print(f"Machine name: {machine}")
         time_data = conn.execute(
-            "SELECT * FROM timeentries WHERE machine = ? AND DATE(start_time) = DATE(?) ORDER BY id DESC LIMIT 1",
+            """SELECT * FROM timeentries 
+                WHERE machine = ? 
+                AND DATE(start_time) = DATE(?) 
+                ORDER BY id DESC LIMIT 1""",
             (machine, utc_dt),
         ).fetchone()
         conn.commit()
@@ -1227,7 +1231,10 @@ def timezone_machine_api():
             # If the machine has no end time today, update entry with end time
             if not ended:
                 conn.execute(
-                    "UPDATE timeentries SET end_time = ? WHERE machine = ? AND DATE(start_time) = DATE(?) AND id = ?",
+                    """UPDATE timeentries SET end_time = ? 
+                        WHERE machine = ? 
+                        AND DATE(start_time) = DATE(?) 
+                        AND id = ?""",
                     (utc_dt, machine, utc_dt, time_data["id"]),
                 )
                 print(f"End time created for machine: {machine} at {utc_dt}")
@@ -1264,7 +1271,10 @@ def timezone_user_api():
     conn = db_connect()
     try:
         cursor = conn.execute(
-            "SELECT id FROM timeentries WHERE user = ? AND end_time IS NULL ORDER BY start_time DESC LIMIT 1",
+            """SELECT id FROM timeentries 
+                WHERE user = ? 
+                AND end_time IS NULL 
+                ORDER BY start_time DESC LIMIT 1""",
             (user,),
         )
         row = cursor.fetchone()
@@ -1344,7 +1354,9 @@ def admin_create_user():
         conn = db_connect()
         try:
             conn.execute(
-                "INSERT INTO users (username, password, name, lastname, email, role, paytype, pay, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                """INSERT INTO users 
+                    (username, password, name, lastname, email, role, paytype, pay, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (username, password, name, lastname, email, role, paytype, pay, utc_dt),
             )
             conn.commit()
@@ -1628,9 +1640,10 @@ def contactAPI():
         conn = db_connect()
         try:
             row = conn.execute(
-                """SELECT * FROM contact WHERE email = ? 
-                               AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" 
-                               ORDER BY id DESC LIMIT 1""",
+                """SELECT * FROM contact 
+                    WHERE email = ? 
+                    AND TIMEDIFF(?, timestamp) < "+0000-00-00 00:01:00" 
+                    ORDER BY id DESC LIMIT 1""",
                 (email, utc_dt),
             ).fetchone()
             row = dict(row)
