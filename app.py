@@ -36,7 +36,7 @@ class ProxiedRequestHandler(WSGIRequestHandler):
     """Proxy request handler class, makes sure we can access the real client IP"""
 
     def address_string(self):
-        # trust the first entry in X-Forwarded-For
+        # Split the X-Forwarded-For header and return the first IP address
         forwarded = self.headers.get("X-Forwarded-For", "")
         if forwarded:
             return forwarded.split(",")[0].strip()
@@ -814,7 +814,9 @@ def get_times():
 
     # Bonk 'em out if they're not an org admin
     if not current_user.is_org_admin:
-        return render_template("forbidden.html")
+        return jsonify(
+            {"Status": "Error 403", "Message": "Forbidden, you are not an org admin"}
+        ), 403
 
     from_date_gen = request.args.get("dateFromGeneral")
     to_date_gen = request.args.get("dateToGeneral")
