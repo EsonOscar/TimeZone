@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 #from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.serving import WSGIRequestHandler
-#from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet
 #from flask_cors import CORS
 from functools import wraps
 from datetime import datetime, timezone, timedelta
@@ -41,6 +41,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 
 #Inistialize the login manager
 login_manager = LoginManager()
+#Set the login view for the login manager, this is used to redirect users to the login page if they are not logged in
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
@@ -124,7 +125,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-"""
+
 #Load the Fernet key from the environment variable (saved in .bashrc, don't tell anyone shhh)
 FERNET_KEY = os.environ.get('FERNET_KEY')
 if not FERNET_KEY:
@@ -135,7 +136,7 @@ else:
     print("We lucky :D")
     # DON'T DO THIS PRINT IN PROD, U GET FIRED >:|
     print(f"Fernet key: {FERNET_KEY}")
-"""
+
 
 ############################################# WEBSITE ROUTES BELOW #############################################
 
@@ -168,6 +169,7 @@ def dashboard():
 
         # Big extract, maybe move to API later to lighten the load on the dashboard route
         # LOGIC HERE WORKS
+        
         try:
             conn = db_connect()
             times = conn.execute('''SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS duration,
@@ -190,7 +192,7 @@ def dashboard():
                          AND end_time IS NOT NULL
                          AND machine IS NULL
                          ORDER BY start_time ASC''', (user,)).fetchall()
-            
+        
             total_times = conn.execute('''SELECT TIME(SUM(strftime("%s", end_time) - strftime("%s", start_time)), "unixepoch") AS total_worked,
                                         TIME(SUM(CASE
                                                 WHEN (strftime("%s", end_time) - strftime("%s", start_time) > (60))
