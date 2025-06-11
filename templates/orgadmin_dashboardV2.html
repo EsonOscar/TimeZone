@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const genFrom    = document.getElementById('dateFromGeneral');
   const genTo      = document.getElementById('dateToGeneral');
   const genTbody   = document.getElementById('generalOverviewTable');
-
+ 
   genFrom.value = '';
   genTo.value   = '';
 
@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // don’t reload the whole page ya dummy, remember this for later, also maybe fix all your old crap where you don't have it since it took you two weeks to find it >:|
     e.preventDefault();  
 
-    
+    // 
     const qs   = new URLSearchParams({ dateFromGeneral: genFrom.value, dateToGeneral: genTo.value });
 
     try {
