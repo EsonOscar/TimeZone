@@ -315,9 +315,9 @@
             <label class="form-label">Select a user to restore:</label>
             <select id="userSelectRestore" class="form-select">
               <option value="">- Select User -</option>
-              {% for u in deleted_users %}
-                <option value="{{ u.id }}">
-                  {{ u.name }} {{ u.lastname }}
+              {% for ud in deleted_users %}
+                <option value="{{ ud.id }}">
+                  {{ ud.name }} {{ ud.lastname }}
                 </option>
               {% endfor %}
             </select>
@@ -443,6 +443,11 @@
       itemSelectText: ''
     });
     new Choices('#userSelectDelete', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+    new Choices('#userSelectRestore', {
       searchEnabled: true,
       shouldSort: false,
       itemSelectText: ''

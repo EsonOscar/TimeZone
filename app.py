@@ -368,13 +368,17 @@ def admin():
                 AND deleted_at IS NULL
                 ORDER BY role DESC"""
         ).fetchall()
-
+        users = [dict(user) for user in users]
+        print(f"Users: {users}")
         deleted_users = conn.execute(
-            """SELECT * FROM users
+            """SELECT id, name, lastname FROM users
                 WHERE lastname != "root"
                 AND deleted_at IS NOT NULL
                 ORDER BY role DESC"""
         ).fetchall()
+
+        deleted_users = [dict(user) for user in deleted_users]
+        print(f"Deleted users: {deleted_users}")
 
         if current_user.id == 1:
             root_users = conn.execute(
@@ -384,6 +388,7 @@ def admin():
                     ORDER BY role DESC"""
             ).fetchall()
 
+            root_users = [dict(user) for user in root_users]
             count = 0
             for account in root_users:
                 count += 1
@@ -399,7 +404,7 @@ def admin():
             )
 
         conn.close()
-        return render_template("admin.html", users=users)
+        return render_template("admin.html", users=users, deleted_users=deleted_users)
     else:
         return render_template("forbidden.html")
 
