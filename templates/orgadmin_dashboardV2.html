@@ -505,4 +505,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<!-- JS for searchable dropdown menus, very cool -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new Choices('#userSelectOverview', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+    new Choices('#machineSelectOverview', {
+      searchEnabled: true,
+      shouldSort: false,
+      itemSelectText: ''
+    });
+  });
+</script>
+
 {% endblock %}

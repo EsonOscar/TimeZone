@@ -61,10 +61,9 @@
       <div class="row mt-4 mb-2">
         <div class="col d-flex align-items-center justify-content-center">
           <div class="card mt-4 h-100 img-fluid shadow-sm p-4">
-            <img src="{{ url_for('static', filename='tzlogo2.png') }}" class="card-img-top" alt="...">
+            <img src="{{ url_for('static', filename='tzlogo2.png') }}" class="card-img-top" alt="tzlogo" style="max-height:100px; width:auto;">
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">Start your working day</h5>
-              <p class="card-text">Get to work you lazy bastard >:|</p>
               <button id="startBtn" class="btn btn-primary"> Start dagen</button>
               <p id="statusmsg" class="mt-2 text-muted"></p>
               <p id="timerDisplay" class="mt-2 fw-bold"></p> 
@@ -201,7 +200,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     btn.classList.toggle('btn-success', !isActive);
     btn.classList.toggle('btn-danger',  isActive);
 
-    // 2.3.4) Click-handler: POST to your API and update activeMachines locally
+    // Click-handler: POST to API and update activeMachines locally
     btn.onclick = async () => {
       try {
         const res = await fetch('/api/timezone_machine/', {
@@ -251,6 +250,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 });
 </script>
 
+<!-- Tobias JS -->
 <script>
   console.log("java er indlæst");
 
@@ -270,7 +270,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       const hours = Math.floor(forskellen/ 3600).toString().padStart(2, '0');
       const minutes = Math.floor((forskellen % 3600) / 60).toString().padStart(2, '0');
       const seconds = (forskellen % 60).toString().padStart(2, '0');
-      timerDisplay.innerText = `tid i gang: ${hours}:${minutes}:${seconds}`;
+      timerDisplay.innerText = `Tid i gang: ${hours}:${minutes}:${seconds}`;
     },1000);
   }
 
@@ -299,7 +299,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     .then (data =>{
       if (data.status === "success" || data.status === "great success") {
         if (data.action === "start") {
-          startBtn.innerText = "stop din dejlige dag";
+          startBtn.innerText = "Stop din dejlige dag";
           startBtn.classList.replace("btn-primary", "btn-danger");
           statusMsg.innerText = data.message;
           working = true;
@@ -307,7 +307,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         } 
         else if (data.action === "stop") {
             console.log("stop action received");
-           startBtn.innerText = "er du allerede færdig store drov";
+           startBtn.innerText = "Er du allerede færdig?";
            startBtn.classList.replace("btn-danger", "btn-success");           
            statusMsg.innerText = data.message;
            working = false;
@@ -315,7 +315,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
           
         
           setTimeout(() => {
-            startBtn.innerText = "vil du starte igen taber kylling";
+            startBtn.innerText = "Vil du starte igen taber kylling?";
             startBtn.className = "btn btn-primary";
             startBtn.disabled = false;
             statusMsg.innerText = "";

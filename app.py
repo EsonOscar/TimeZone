@@ -300,8 +300,7 @@ def dashboard():
             # Currently using the root employee for testing
             users = conn.execute(
                 """SELECT id, username, name, lastname FROM users
-                    WHERE role = "employee"
-                    AND deleted_at IS NULL
+                    WHERE deleted_at IS NULL
                     ORDER BY name ASC"""
             ).fetchall()
             machines = conn.execute(
@@ -491,6 +490,10 @@ def login():
             return redirect(url_for("login"))
         finally:
             conn.close()
+
+        if not row:
+            flash("Invalid username or password.", "danger")
+            return redirect(url_for("login"))
 
         pass_check = check_password_hash(
             row["password"], request.form.get("password", "")
@@ -736,7 +739,8 @@ def get_user_times():
                 """SELECT start_time, end_time, TIMEDIFF(end_time, start_time) AS worked,
                          CASE
                             WHEN TIMEDIFF(end_time, start_time) > "+0000-00-00 00:01:00"
-                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute")) ELSE "+0000-00-00 00:00:00"
+                            THEN TIMEDIFF(end_time, datetime(start_time, "+1 minute"))
+                            ELSE "+0000-00-00 00:00:00"
                          END AS overtime,
                          ROUND(CASE
                                  WHEN (strftime("%s", end_time) - strftime("%s", start_time)) <= 60
@@ -745,7 +749,7 @@ def get_user_times():
                                     (strftime("%s", end_time) - strftime("%s", start_time) - 60)
                                     * 100.0 / (strftime("%s", end_time) - strftime("%s", start_time))
                                     END, 2)
-                                 AS overtime_percentage
+                         AS overtime_percentage
                     FROM timeentries
                     WHERE user = ?
                     AND DATE(start_time) BETWEEN ? AND ?
@@ -814,9 +818,15 @@ def get_times():
 
     # Bonk 'em out if they're not an org admin
     if not current_user.is_org_admin:
-        return jsonify(
-            {"Status": "Error 403", "Message": "Forbidden, you are not an org admin"}
-        ), 403
+        return (
+            jsonify(
+                {
+                    "Status": "Error 403",
+                    "Message": "Forbidden, you are not an org admin",
+                }
+            ),
+            403,
+        )
 
     from_date_gen = request.args.get("dateFromGeneral")
     to_date_gen = request.args.get("dateToGeneral")
@@ -838,8 +848,7 @@ def get_times():
             # WHERE lastname != "root"
             users = conn.execute(
                 """SELECT username, name, lastname FROM users
-                    WHERE role = "employee"
-                    AND deleted_at IS NULL
+                    WHERE deleted_at IS NULL
                     ORDER BY name ASC"""
             ).fetchall()
             times = conn.execute(
@@ -1290,7 +1299,7 @@ def timezone_user_api():
             return jsonify(
                 {
                     "status": "success",
-                    "message": f"DIN dag er slut og registreret {user} at {utc_dt} og hvis du vil starte den igen tryk start dagen igen",
+                    "message": f"DIN dag er slut og registreret {user} at {utc_dt}\n og hvis du vil starte den igen tryk start dagen igen",
                     "action": "stop",
                 }
             )
