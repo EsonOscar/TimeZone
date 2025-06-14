@@ -164,7 +164,10 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     const found = (event.uuids || []).find(u => MY_UUIDS.includes(u));
     if (!found) return;
 
-    const name = event.device.name || '<no name>';
+    // BLE Beacon sends name, lifetime, and battery level in the name field
+    // Split device name by '|', and reference the first part as the name
+    const data = event.device.name.split("|") || '<no data>';
+    const name = data[0] || '<no name>';
     const rssi = event.rssi;
 
     // see if we already have a row for this beacon
