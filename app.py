@@ -21,6 +21,7 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.serving import WSGIRequestHandler
+# Mega fricken annoying that I didn't have time to get fernet to work, boooo
 from cryptography.fernet import Fernet
 
 from functools import wraps
@@ -265,7 +266,8 @@ def dashboard():
             conn.commit()
             if times:
                 times = [dict(time) for time in times]
-            total_times = dict(total_times)
+            if total_times:
+                total_times = dict(total_times)
 
             for time in times:
                 time["duration"] = time["duration"][:-4][12:]
