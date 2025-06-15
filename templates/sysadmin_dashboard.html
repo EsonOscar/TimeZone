@@ -24,7 +24,12 @@
     <!-- Nav Tabs -->
   <ul class="nav nav-pills mb-4 mt-1" id="dashTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="tab-unread" data-bs-toggle="pill" data-bs-target="#pane-unread" type="button" role="tab">
+      <button class="nav-link active" id="tab-blestatus" data-bs-toggle="pill" data-bs-target="#pane-blestatus" type="button" role="tab">
+        <i class="bi bi-motherboard"></i></i> BLE Beacon Status
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-unread" data-bs-toggle="pill" data-bs-target="#pane-unread" type="button" role="tab">
         <i class="bi bi-envelope-exclamation"></i> Unread Messages
       </button>
     </li>
@@ -35,9 +40,36 @@
     </li>
   </ul>
 
-  <!-- Unread Messages Tab-->
+  <!-- Tab Content -->
   <div class="tab-content" id="empTabsContent">
-    <div class="tab-pane fade show active" id="pane-unread" role="tabpanel">
+    <!-- BLE Beacon Status Tab -->
+     <div class="tab-pane fade show active" id="pane-blestatus" role="tabpanel">
+      <div class="row">
+        <div class="card shadow-sm p-4">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <h4>BLE Beacon Status</h4>
+                <p>Below you will find the most up to date information about the BLE beacons, currently saved in the database.</p>
+                <th>Machine Name</th><th>Lifetime</th><th>Battery Percentage</th><th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in blestatus %}
+              <tr>
+                <td>{{ b.name }}</td>
+                <td>{{ b.lifetime }}</td>
+                <td>{{ b.pct }}</td>
+                <td>{{ b.created_at }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- Unread Messages Tab-->
+    <div class="tab-pane fade" id="pane-unread" role="tabpanel">
       <div class="row">
         <div class="card shadow-sm p-4">
           <table class="table table-striped mb-0">

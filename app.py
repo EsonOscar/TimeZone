@@ -330,15 +330,30 @@ def dashboard():
                     WHERE is_read = 0
                     ORDER BY timestamp ASC"""
             ).fetchall()
+
+            blestatus = conn.execute(
+                """SELECT name, lifetime, pct, created_at FROM blestatus AS b1
+                    WHERE created_at = (
+                        SELECT MAX(b2.created_at)
+                        FROM blestatus  b2
+                        WHERE b2.name = b1.name
+                        )
+                    ORDER BY pct ASC"""
+            ).fetchall()
             conn.commit()
+            blestatus = [dict(status) for status in blestatus]
             messages = [dict(message) for message in messages]
+            print(f"Messages: {messages}")
+            print(f"BLEStatus: {blestatus}")
         except Exception as e:
             print(f"Database error: {e}")
             flash("Database error, please contact support", "danger")
             return redirect(url_for("index"))
         finally:
             conn.close()
-        return render_template("sysadmin_dashboard.html", messages=messages)
+        return render_template(
+            "sysadmin_dashboard.html", messages=messages, blestatus=blestatus
+        )
     else:
         return render_template("forbidden.html")
 
@@ -1176,8 +1191,10 @@ def timezone_machine_api():
     )
     data = json.loads(request.data.decode("utf-8"))
     uuid = data.get("uuid")
+    lifetime = data.get("lifetime")
+    pct = data.get("pct")
     utc_dt = str(datetime.now(timezone.utc) + timedelta(hours=2))[:-13]
-    print(f"UUID: {uuid}")
+    print(f"UUID: {uuid}\nLifetime: {lifetime}\nPct: {pct}")
 
     # Check basic conditions, if the user is not an employee or if no UUID is provided
     if current_user.role != "employee":
@@ -1192,7 +1209,6 @@ def timezone_machine_api():
         conn = db_connect()
         uuid_list = conn.execute("SELECT uuid FROM machines ORDER BY id").fetchall()
         uuid_list = [str(uuid[0]) for uuid in uuid_list]
-        print(uuid_list)
         conn.commit()
     except Exception as e:
         print(f"Database error: {e}")
@@ -1263,6 +1279,23 @@ def timezone_machine_api():
                 )
                 conn.commit()
                 print(f"Start time created for machine: {machine} at {utc_dt}")
+    except Exception as e:
+        print(f"Database error: {e}")
+        flash("Database error", "danger")
+        return jsonify({"success": False, "error": "Database error"}), 400
+    finally:
+        conn.close()
+
+    # Insert the status of the machine into the database
+    try:
+        conn = db_connect()
+        conn.execute(
+            """INSERT INTO blestatus (name, lifetime, pct, created_at)
+                VALUES (?, ?, ?, ?)""",
+            (machine, lifetime, pct, utc_dt),
+        )
+        conn.commit()
+        print(f"Machine status updated for Machine: {machine} at {utc_dt}")
     except Exception as e:
         print(f"Database error: {e}")
         flash("Database error", "danger")

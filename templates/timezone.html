@@ -97,7 +97,7 @@
               <thead>
                 <p class="mx-auto d-block"><b>Machines found nearby:</b></p>
                 <tr>
-                  <th>Machine</th><th>RSSI</th><th>Action</th>
+                  <th>Machine</th><th>Distance</th><th>Action</th>
                 </tr>
               </thead>
               <tbody id="beaconTable">
@@ -165,16 +165,36 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     if (!found) return;
 
     // BLE Beacon sends name, lifetime, and battery level in the name field
-    // Split device name by '|', and reference the first part as the name
+    // Split device name by '|'
+    // First entry is the name, second is lifetime, third is battery percentage
     const data = event.device.name.split("|") || '<no data>';
     const name = data[0] || '<no name>';
-    const rssi = event.rssi;
+    const lifetime = data[1] || '<no lifetime>';
+    const pct = data[2] || '<no battery>';
+    // The squiggly bit "~" inverts the RSSI value, so it becomes positive
+    const rssi = ~event.rssi;
+    
+    var distance = '';
+
+    if (rssi < 50) {
+      distance = 'Very close';
+    }
+    else if (rssi < 70) {
+      distance = 'Close';
+    }
+    else if (rssi < 90) {
+      distance = 'Far away';
+    }
+    else {
+      distance = 'Very far away';
+    }
+    
 
     // see if we already have a row for this beacon
     let row = tbody.querySelector(`tr[data-uuid="${found}"]`);
     if (row) {
-      // update the RSSI cell
-      row.cells[1].textContent = rssi;
+      // update the Distance cell
+      row.cells[1].textContent = distance;
     } else {
       // create a new row
       row = document.createElement('tr');
@@ -183,8 +203,8 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       const tdName = document.createElement('td');
       tdName.textContent = name;
 
-      const tdRssi = document.createElement('td');
-      tdRssi.textContent = rssi;
+      const tdDistance = document.createElement('td');
+      tdDistance.textContent = distance;
 
       const tdAction = document.createElement('td');
       const btn = document.createElement('button');
@@ -192,7 +212,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
       tdAction.appendChild(btn);
 
       row.appendChild(tdName);
-      row.appendChild(tdRssi);
+      row.appendChild(tdDistance);
       row.appendChild(tdAction);
       tbody.appendChild(row);
     }
@@ -209,7 +229,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         const res = await fetch('/api/timezone_machine/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uuid: found })
+          body: JSON.stringify({ uuid: found, lifetime: lifetime, pct: pct })
         });
         const payload = await res.json();
         // Quick sanity check, to see the API response code
